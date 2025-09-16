@@ -1,4 +1,8 @@
 from flask import Flask, jsonify
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -10,6 +14,18 @@ def get_data():
         "description": "This is a sample item."
     }
     return jsonify(sample_data)
+
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    status = {
+        "status": "OK",
+        "message": "API is running smoothly.",
+        "secret_key": SECRET_KEY
+    }
+    return jsonify(status)
 
 if __name__ == '__main__':
     app.run(debug=True)
