@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def home():
-    return jsonify({"message": "Welcome to the API"})
+    return jsonify({"message": "Welcome to API"})
 
 
 
