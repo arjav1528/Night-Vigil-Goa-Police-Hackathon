@@ -1,39 +1,46 @@
-from flask import Flask, jsonify
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
+from flask import Flask, request, jsonify
+from prisma import Prisma
 
 app = Flask(__name__)
-
-
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({"message": "Welcome to API"})
+db = Prisma()
 
 
 
+@app.route("/")
+async def index():
+    return jsonify({"message": "Welcome to the Night Vigil Backend!"})
 
-@app.route('/api/data', methods=['GET'])
-def get_data():
-    sample_data = {
-        "id": 1,
-        "name": "Sample Item",
-        "description": "This is a sample item."
-    }
-    return jsonify(sample_data)
+@app.route("/add_user", methods=["POST"])
+async def add_user():
+    
+    if not db.is_connected():
+        await db.connect()
 
+    data = request.get_json()
+    name = data.get("name")
+    email = data.get("email")
 
-@app.route('/api/status', methods=['GET'])
-def get_status():
+    if not name or not email:
+        return jsonify({"error": "Name and email are required"}), 400
 
-    SECRET_KEY = os.getenv('SECRET_KEY')
-    status = {
-        "status": "OK",
-        "message": "API is running smoothly.",
-        "secret_key": SECRET_KEY
-    }
-    return jsonify(status)
+    try:
+        user = await db.user.create(
+            data={
+                "name": name,
+                "email": email
+            }
+        )
+        return jsonify(user.dict()), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# --- Fetch all users ---
+@app.route("/users", methods=["GET"])
+async def get_users():
+    if not db.is_connected():
+        await db.connect()
+    users = await db.user.find_many()
+    return jsonify([u.dict() for u in users])
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
