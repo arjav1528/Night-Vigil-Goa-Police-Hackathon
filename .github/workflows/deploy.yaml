@@ -1,0 +1,79 @@
+---
+name: Deploy Backend to EC2 🚀
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - "main"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Replace backend folder on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
+            "rm -rf /home/ubuntu/backend"
+          scp -r backend \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/
+
+      - name: Upload .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+          scp .env \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:\
+              /home/ubuntu/backend/.env
+
+      - name: Deploy backend + ngrok on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
+              # Install ngrok if not installed
+              if ! command -v ngrok &> /dev/null; then
+                curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
+                  sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+                echo 'deb https://ngrok-agent.s3.amazonaws.com buster main' | \
+                  sudo tee /etc/apt/sources.list.d/ngrok.list
+                sudo apt update && sudo apt install ngrok -y
+              fi
+
+              # Authenticate ngrok
+              ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+              # Restart backend
+              cd /home/ubuntu/backend
+              python3 -m venv venv
+              source venv/bin/activate
+              pip install --upgrade pip
+              pip install -r requirements.txt
+              pkill gunicorn || true
+              nohup gunicorn -b 0.0.0.0:8000 app:app > gunicorn.log 2>&1 &
+
+              # Restart ngrok
+              pkill ngrok || true
+              nohup ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
+            "
+
+      - name: Fetch ngrok URL
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
+              sleep 5
+              curl --silent http://127.0.0.1:4040/api/tunnels | \
+                jq -r '.tunnels[0].public_url'
+            "
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_rsa
