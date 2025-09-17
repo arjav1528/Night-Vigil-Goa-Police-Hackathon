@@ -20,20 +20,20 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Replace backend folder on EC2
+      - name: Prepare and copy backend files to EC2
         run: |
+          # Create .env file locally first
+          echo "${{ secrets.ENV_FILE }}" > backend/.env
+
+          # Remove old backend directory on EC2
           ssh -o StrictHostKeyChecking=no \
             ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
             "rm -rf /home/ubuntu/backend"
           scp -r backend \
             ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/
 
-      - name: Upload .env file
-        run: |
-          echo "${{ secrets.ENV_FILE }}" > .env
-          scp .env \
-            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:\
-              /home/ubuntu/backend/.env
+          # Remove local .env file for security
+          rm -f backend/.env
 
       - name: Deploy backend + ngrok on EC2
         run: |
