@@ -15,7 +15,94 @@ datasource db {
 
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id           String       @id @default(uuid())
+  empid        String    @unique
+  passwordHash String?   // Only required for SHOs/Admins
+  role         Role      @default(OFFICER)
+  profileImage String?   // Path/URL for stored image
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime?  @updatedAt
+
+  // Relations
+  dutyAssignments DutyAssignment[] @relation("OfficerDuties")
+  assignedDuties DutyAssignment[] @relation("AdminAssignments")
+  dutyLogs       DutyLog[]
+  notifications  Notification[]
+  reports        DutyReport[]
+}
+
+model DutyAssignment {
+  id         String    @id @default(uuid())
+  officerId  String
+  assignedBy String
+  location   String
+  latitude   Float
+  longitude  Float
+  radius     Float     @default(100)
+  startTime  DateTime
+  endTime    DateTime
+  status     DutyStatus @default(PENDING)
+
+  // Relations
+  officer User @relation("OfficerDuties", fields: [officerId], references: [id])
+  admin   User @relation("AdminAssignments", fields: [assignedBy], references: [id])
+  logs    DutyLog[]
+}
+
+model DutyLog {
+  id              String    @id @default(uuid())
+  dutyId          String
+  officerId       String
+  checkinTime     DateTime  @default(now())
+  selfiePath      String?
+  faceVerified    Boolean   @default(false)
+  locationVerified Boolean  @default(false)
+  remarks         String?
+
+  // Relations
+  duty    DutyAssignment @relation(fields: [dutyId], references: [id])
+  officer User           @relation(fields: [officerId], references: [id])
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  message   String
+  type      NotificationType
+  createdAt DateTime  @default(now())
+  read      Boolean   @default(false)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+}
+
+model DutyReport {
+  id             String    @id @default(uuid())
+  officerId      String
+  date           DateTime
+  totalAssigned  Int       @default(0)
+  completed      Int       @default(0)
+  missed         Int       @default(0)
+  complianceRate Float     @default(0.0)
+
+  // Relations
+  officer User @relation(fields: [officerId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  OFFICER
+}
+
+enum DutyStatus {
+  PENDING
+  COMPLETED
+  MISSED
+}
+
+enum NotificationType {
+  ALERT
+  REMINDER
+  MISSED_DUTY
 }
