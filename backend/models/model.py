@@ -8,6 +8,11 @@ import jwt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def generate_id():
+    import uuid
+    return str(uuid.uuid4())
+
+
 
 
 
@@ -31,7 +36,7 @@ class NotificationType(Enum):
 class User:
     def __init__(
         self,
-        id: str = None,  # <-- Add this
+        id: str = generate_id(),
         empid: str = None,
         passwordHash: Optional[str] = None,
         role: Role = Role.OFFICER,
@@ -62,6 +67,7 @@ class User:
 
     def verify_password(self, password: str) -> bool:
         if not self.passwordHash:
+            print("No password hash set for user.")
             return False
         return pwd_context.verify(password, self.passwordHash)
 
@@ -73,6 +79,17 @@ class User:
         }
         token = jwt.encode(payload, secret_key, algorithm="HS256")
         return token
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "empid": self.empid,
+            "role": self.role.value if isinstance(self.role, Enum) else self.role,
+            "profileImage": self.profileImage,
+            "passwordHash": self.passwordHash,
+            "createdAt": self.createdAt,
+            "updatedAt": self.updatedAt,
+        }
     
 
 
@@ -93,7 +110,7 @@ class DutyAssignment:
         admin: Optional[User] = None,
         logs: Optional[List["DutyLog"]] = None,
     ):
-        self.id = None  # ID will be set by the database
+        self.id = generate_id()
         self.officerId = officerId
         self.assignedBy = assignedBy
         self.location = location
@@ -106,6 +123,21 @@ class DutyAssignment:
         self.officer = officer
         self.admin = admin
         self.logs = logs or []
+
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "officerId": self.officerId,
+            "assignedBy": self.assignedBy,
+            "location": self.location,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "radius": self.radius,
+            "startTime": self.startTime.isoformat() if self.startTime else None,
+            "endTime": self.endTime.isoformat() if self.endTime else None,
+            "status": self.status.value if isinstance(self.status, Enum) else self.status,
+        }
 
 
 class DutyLog:
@@ -121,7 +153,7 @@ class DutyLog:
         duty: Optional[DutyAssignment] = None,
         officer: Optional[User] = None,
     ):
-        self.id = None  # ID will be set by the database
+        self.id = generate_id()
         self.dutyId = dutyId
         self.officerId = officerId
         self.checkinTime = checkinTime or datetime.now()
@@ -131,6 +163,19 @@ class DutyLog:
         self.remarks = remarks
         self.duty = duty
         self.officer = officer
+
+
+    def to_dict(self):        
+        return {
+            "id": self.id,
+            "dutyId": self.dutyId,
+            "officerId": self.officerId,
+            "checkinTime": self.checkinTime.isoformat() if self.checkinTime else None,
+            "selfiePath": self.selfiePath,
+            "faceVerified": self.faceVerified,
+            "locationVerified": self.locationVerified,
+            "remarks": self.remarks,
+        }
 
 
 class Notification:
@@ -143,13 +188,24 @@ class Notification:
         read: bool = False,
         user: Optional[User] = None,
     ):
-        self.id = None  # ID will be set by the database
+        self.id = generate_id()
         self.userId = userId
         self.message = message
         self.type = type
         self.createdAt = createdAt or datetime.now()
         self.read = read
         self.user = user
+
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "userId": self.userId,
+            "message": self.message,
+            "type": self.type.value if isinstance(self.type, Enum) else self.type,
+            "createdAt": self.createdAt.isoformat() if self.createdAt else None,
+            "read": self.read,
+        }
 
 
 class DutyReport:
@@ -163,7 +219,7 @@ class DutyReport:
         complianceRate: float = 0.0,
         officer: Optional[User] = None,
     ):
-        self.id = None  # ID will be set by the database
+        self.id = generate_id()
         self.officerId = officerId
         self.date = date
         self.totalAssigned = totalAssigned
@@ -171,3 +227,15 @@ class DutyReport:
         self.missed = missed
         self.complianceRate = complianceRate
         self.officer = officer
+
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "officerId": self.officerId,
+            "date": self.date.isoformat() if self.date else None,
+            "totalAssigned": self.totalAssigned,
+            "completed": self.completed,
+            "missed": self.missed,
+            "complianceRate": self.complianceRate,
+        }

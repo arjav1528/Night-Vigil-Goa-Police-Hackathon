@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from time import time
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 from prisma import Prisma
 from controllers import auth
+from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI()
 db = Prisma()
@@ -20,6 +22,27 @@ async def shutdown():
         await db.disconnect()
 
 app.include_router(auth.router)
+
+@app.middleware("http")
+async def middleware(request: Request, call_next):
+    print(f"Request to {request.url.path}")
+    print(f"Method: {request.method}")
+    print(f"Header: {request.headers}")
+    try:
+        data = await request.json()
+        print(f"JSON Body: {data}")
+
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        # pass  # Not all requests have JSON bodies
+        print("No JSON body found")
+        return Response("Invalid request", status_code=400)
+
+
+    # response = await call_next(request)
+    # return response
+
 
 
 @app.get("/")
