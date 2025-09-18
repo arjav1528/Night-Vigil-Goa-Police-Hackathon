@@ -25,6 +25,10 @@ app.include_router(auth.router)
 
 @app.middleware("http")
 async def middleware(request: Request, call_next):
+
+    if request.url.path in ["/", "/users", "/openapi.json", "/redoc"]:
+        response = await call_next(request)
+        return response
     print(f"Request to {request.url.path}")
     print(f"Method: {request.method}")
     print(f"Header: {request.headers}")
