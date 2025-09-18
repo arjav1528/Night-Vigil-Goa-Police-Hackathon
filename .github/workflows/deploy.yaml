@@ -57,8 +57,12 @@ jobs:
               source venv/bin/activate
               pip install --upgrade pip
               pip install -r requirements.txt
+              prisma generate
+              # Apply any pending migrations
               pkill gunicorn || true
               nohup gunicorn -b 0.0.0.0:8000 app:app > gunicorn.log 2>&1 &
+
+              sleep 3
 
               # Restart ngrok
               pkill ngrok || true
