@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
 from prisma import Prisma
 from models.model import User
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 
 db = Prisma()
@@ -41,6 +46,7 @@ async def register(request: Request):
         user = User(empid=empid, role=role, profileImage=profileImage)
         user.set_password(password)
 
+
         result = await db.user.create(
             data={
                 "empid": user.empid,
@@ -59,6 +65,59 @@ async def register(request: Request):
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, message=f"Internal server error: {str(e)}")
+
+
+@router.post("/login")
+async def login(request: Request):
+    try:
+        if not db.is_connected():
+            await db.connect()
+        req = await request.json()
+        empid = req.get("empid")
+        password = req.get("password")
+        if not empid or not password:
+            raise HTTPException(status_code=400, detail="empid and password are required")
+        
+        user = await db.user.find_unique(where={"empid": empid})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_model = User(**user.dict())
+
+        token = user_model.generate_token(SECRET_KEY)
+
+        if not user_model.verify_password(password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        return {"access_token": token, "token_type": "bearer"}
+
+    except HTTPException as e:
+        db.disconnect()
+        raise e
+    except Exception as e:
+        print(e)
+        db.disconnect()
+        raise HTTPException(status_code=500, detail=e)
+
+
+
+@router.get("/{empid}")
+async def get_user(empid: str):
+    try:
+        if not db.is_connected():
+            await db.connect()
+        user = await db.user.find_unique(where={"empid": empid})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user.dict()
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+    
 
 
 

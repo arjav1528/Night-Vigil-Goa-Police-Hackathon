@@ -1,10 +1,12 @@
+from fastapi import HTTPException
 from enum import Enum
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from passlib.context import CryptContext
-import uuid
+import jwt
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 
 
@@ -29,7 +31,8 @@ class NotificationType(Enum):
 class User:
     def __init__(
         self,
-        empid: str,  # Employee ID instead of email
+        id: str = None,  # <-- Add this
+        empid: str = None,
         passwordHash: Optional[str] = None,
         role: Role = Role.OFFICER,
         profileImage: Optional[str] = None,
@@ -41,10 +44,10 @@ class User:
         notifications: Optional[List["Notification"]] = None,
         reports: Optional[List["DutyReport"]] = None,
     ):
-        self.id = None  # ID will be set by the database
+        self.id = id  # <-- Accept id from constructor
         self.empid = empid
         self.passwordHash = passwordHash
-        self.role = role
+        self.role = Role(role) if isinstance(role, str) else role  # Handle string/enum
         self.profileImage = profileImage
         self.createdAt = createdAt or datetime.now()
         self.updatedAt = updatedAt
@@ -61,6 +64,17 @@ class User:
         if not self.passwordHash:
             return False
         return pwd_context.verify(password, self.passwordHash)
+
+    def generate_token(self, secret_key, expiration_days=1):
+        payload = {
+            "empid": self.empid,
+            "role": self.role.value,
+            "exp": datetime.utcnow() + timedelta(days=expiration_days)
+        }
+        token = jwt.encode(payload, secret_key, algorithm="HS256")
+        return token
+    
+
 
 
 class DutyAssignment:
