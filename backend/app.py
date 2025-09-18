@@ -1,46 +1,47 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from prisma import Prisma
 
-app = Flask(__name__)
+app = FastAPI()
 db = Prisma()
 
+# --- Startup / Shutdown hooks ---
+@app.on_event("startup")
+async def startup():
+    if not db.is_connected():
+        await db.connect()
 
+@app.on_event("shutdown")
+async def shutdown():
+    if db.is_connected():
+        await db.disconnect()
 
-@app.route("/")
+# --- Request schema ---
+class UserCreate(BaseModel):
+    name: str
+    email: str
+
+# --- Routes ---
+@app.get("/")
 async def index():
-    return jsonify({"message": "Welcome to the Night Vigil Backend!"})
+    return {"message": "Welcome to the Night Vigil Backend!"}
 
-@app.route("/add_user", methods=["POST"])
-async def add_user():
-    
-    if not db.is_connected():
-        await db.connect()
-
-    data = request.get_json()
-    name = data.get("name")
-    email = data.get("email")
-
-    if not name or not email:
-        return jsonify({"error": "Name and email are required"}), 400
-
+@app.post("/add_user")
+async def add_user(user: UserCreate):
     try:
-        user = await db.user.create(
-            data={
-                "name": name,
-                "email": email
-            }
+        new_user = await db.user.create(
+            data={"name": user.name, "email": user.email}
         )
-        return jsonify(user.dict()), 201
+        return new_user.dict()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# --- Fetch all users ---
-@app.route("/users", methods=["GET"])
+@app.get("/users")
 async def get_users():
-    if not db.is_connected():
-        await db.connect()
     users = await db.user.find_many()
-    return jsonify([u.dict() for u in users])
+    return [u.dict() for u in users]
+
+
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8000)

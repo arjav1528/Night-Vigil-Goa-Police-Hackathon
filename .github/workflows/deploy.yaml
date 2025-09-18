@@ -60,7 +60,7 @@ jobs:
               prisma generate
               # Apply any pending migrations
               pkill gunicorn || true
-              nohup gunicorn -b 0.0.0.0:8000 app:app > gunicorn.log 2>&1 &
+              nohup gunicorn app:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 > gunicorn.log 2>&1 &
 
               sleep 3
 
