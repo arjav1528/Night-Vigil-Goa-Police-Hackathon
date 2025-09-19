@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Request
+from datetime import datetime
+from typing import Optional
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from prisma import Prisma
 from models.model import User
 from dotenv import load_dotenv
 import os
 from enum import Enum
+from controllers.auth import UserOut
+
+from security import get_current_user
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -104,25 +109,12 @@ async def login(request: Request):
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
-@router.get("/{empid}")
-async def get_user(empid: str):
-    try:
-        if not db.is_connected():
-            await db.connect()
-        existing_user = await db.user.find_unique(where={"empid": empid})
-        if not existing_user:
-            return JSONResponse(status_code=404, content={"detail": "User not found"})
-        print(existing_user)
-        user_data = existing_user.dict()
-        if 'createdAt' in user_data and hasattr(user_data['createdAt'], 'isoformat'):
-            user_data['createdAt'] = user_data['createdAt'].isoformat()
-        if 'updatedAt' in user_data and hasattr(user_data['updatedAt'], 'isoformat'):
-            user_data['updatedAt'] = user_data['updatedAt'].isoformat()
 
-        return JSONResponse(status_code=200, content=user_data)
-        
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.get("/me", response_model=UserOut)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
 
 
 

@@ -49,10 +49,10 @@ class User:
         notifications: Optional[List["Notification"]] = None,
         reports: Optional[List["DutyReport"]] = None,
     ):
-        self.id = id  # <-- Accept id from constructor
+        self.id = id  
         self.empid = empid
         self.passwordHash = passwordHash
-        self.role = Role(role) if isinstance(role, str) else role  # Handle string/enum
+        self.role = Role(role) if isinstance(role, str) else role  
         self.profileImage = profileImage
         self.createdAt = createdAt or datetime.now()
         self.updatedAt = updatedAt
