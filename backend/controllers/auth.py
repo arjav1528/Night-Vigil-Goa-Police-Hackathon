@@ -40,7 +40,7 @@ async def register(request: Request):
         req = await request.json()
         empid = req.get("empid")
         password = req.get("password")
-        profileImage = req.get("profileImage")
+        profileImages = req.get("profileImages")
         role = req.get("role", "OFFICER")
         if not empid or not password or not role:
             return JSONResponse(status_code=400, content={"detail": "empid, name, and password are required"})
@@ -48,7 +48,7 @@ async def register(request: Request):
         if existing_user:
             return JSONResponse(status_code=400, content={"detail": "User with this empid already exists"})
         
-        user = User(empid=empid, role=role, profileImage=profileImage)
+        user = User(empid=empid, role=role, profileImage=profileImages)
         user.set_password(password)
         print(f"user : {user.to_dict()}")
 

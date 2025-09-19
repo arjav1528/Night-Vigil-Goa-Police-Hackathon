@@ -19,7 +19,7 @@ model User {
   empid        String    @unique
   passwordHash String?   // Only required for SHOs/Admins
   role         Role      @default(OFFICER)
-  profileImage String?   // Path/URL for stored image
+  profileImage String[]   // Path/URL for stored image
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime?  @updatedAt

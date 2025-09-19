@@ -25,12 +25,10 @@ ThemeData buildTheme() {
     colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
       secondary: AppColors.secondary,
-      background: AppColors.background,
       surface: AppColors.surface,
       error: AppColors.error,
       onPrimary: AppColors.onPrimary,
       onSecondary: AppColors.onSecondary,
-      onBackground: AppColors.onBackground,
       onSurface: AppColors.onSurface,
       onError: Colors.white,
     ),

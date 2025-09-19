@@ -60,6 +60,7 @@ jobs:
               pip install --upgrade pip
               pip install -r requirements.txt
               prisma generate
+              prisma db push
               # Apply any pending migrations
               pkill gunicorn || true
               nohup gunicorn app:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 > gunicorn.log 2>&1 &

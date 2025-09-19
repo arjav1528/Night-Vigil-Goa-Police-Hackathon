@@ -3,7 +3,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:night_vigil/api/auth.dart';
 import 'package:night_vigil/theme.dart';
-import 'package:night_vigil/utils/alert.dart';
+
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   await dotenv.load(fileName: ".env");
@@ -40,12 +42,7 @@ class HomeScreen extends StatelessWidget {
         child: TextButton(
           onPressed: () async {
             // This will now work correctly
-            String result = await AuthServices.login('test', 'test', context);
-            CustomSnackBar.show(
-              context,
-              message: result,
-              alertType: AlertType.success,
-            );
+            await AuthServices.login('test', 'test');
           },
           child: const Text('Night Vigil Home Screen'),
         ),

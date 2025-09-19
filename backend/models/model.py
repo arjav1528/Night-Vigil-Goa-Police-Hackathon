@@ -40,7 +40,7 @@ class User:
         empid: str = None,
         passwordHash: Optional[str] = None,
         role: Role = Role.OFFICER,
-        profileImage: Optional[str] = None,
+        profileImage: Optional[List[str]] = None,
         createdAt: Optional[datetime] = None,
         updatedAt: Optional[datetime] = None,
         dutyAssignments: Optional[List["DutyAssignment"]] = None,
@@ -53,7 +53,7 @@ class User:
         self.empid = empid
         self.passwordHash = passwordHash
         self.role = Role(role) if isinstance(role, str) else role  
-        self.profileImage = profileImage
+        self.profileImage = profileImage or []
         self.createdAt = createdAt or datetime.now()
         self.updatedAt = updatedAt
         self.dutyAssignments = dutyAssignments or []
