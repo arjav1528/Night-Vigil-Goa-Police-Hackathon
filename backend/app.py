@@ -3,7 +3,6 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 from prisma import Prisma
 from controllers import auth
-from starlette.middleware.base import BaseHTTPMiddleware
 from controllers import duties
 
 app = FastAPI()

@@ -7,7 +7,7 @@ from models.model import User
 from dotenv import load_dotenv
 import os
 from enum import Enum
-from controllers.auth import UserOut
+from models.schemas import UserOut
 
 from security import get_current_user
 load_dotenv()
