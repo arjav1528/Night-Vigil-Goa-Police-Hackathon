@@ -6,7 +6,7 @@ class UserOut(BaseModel):
     id: str
     empid: str
     role: str
-    profileImage: Optional[str] = None
+    profileImage: Optional[List[str]] = None
     createdAt: datetime
 
 

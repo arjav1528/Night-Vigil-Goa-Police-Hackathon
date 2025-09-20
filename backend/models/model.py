@@ -12,10 +12,6 @@ def generate_id():
     import uuid
     return str(uuid.uuid4())
 
-
-
-
-
 class Role(Enum):
     ADMIN = "ADMIN"
     OFFICER = "OFFICER"
@@ -36,7 +32,7 @@ class NotificationType(Enum):
 class User:
     def __init__(
         self,
-        id: str = generate_id(),
+        id: str = None,  # Change this line
         empid: str = None,
         passwordHash: Optional[str] = None,
         role: Role = Role.OFFICER,
@@ -48,12 +44,13 @@ class User:
         dutyLogs: Optional[List["DutyLog"]] = None,
         notifications: Optional[List["Notification"]] = None,
         reports: Optional[List["DutyReport"]] = None,
+        faceEmbeddings: Optional[List["FaceEmbedding"]] = None,
     ):
-        self.id = id  
+        self.id = id or generate_id()  # Change this line
         self.empid = empid
         self.passwordHash = passwordHash
         self.role = Role(role) if isinstance(role, str) else role  
-        self.profileImage = profileImage or []
+        self.profileImage = profileImage if profileImage is not None else []  # Fix the assignment
         self.createdAt = createdAt or datetime.now()
         self.updatedAt = updatedAt
         self.dutyAssignments = dutyAssignments or []
@@ -61,6 +58,7 @@ class User:
         self.dutyLogs = dutyLogs or []
         self.notifications = notifications or []
         self.reports = reports or []
+        self.faceEmbeddings = faceEmbeddings or []
 
     def set_password(self, password: str):
         self.passwordHash = pwd_context.hash(password)
@@ -87,8 +85,8 @@ class User:
             "role": self.role.value if isinstance(self.role, Enum) else self.role,
             "profileImage": self.profileImage,
             "passwordHash": self.passwordHash,
-            "createdAt": self.createdAt,
-            "updatedAt": self.updatedAt,
+            "createdAt": self.createdAt.isoformat() if self.createdAt else None,
+            "updatedAt": self.updatedAt.isoformat() if self.updatedAt else None,
         }
     
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 from datetime import datetime
+from fastapi.responses import JSONResponse
 from prisma import Prisma
 import os
 from models.model import User, DutyAssignment, DutyLog, DutyStatus
@@ -119,9 +120,19 @@ async def duty_location_update(
 
 @router.get("/users/all", response_model=List[UserOut])
 async def get_all_users(admin: User = Depends(get_current_admin_user)):
-    users = await db.user.find_many(
-        where={"role": "OFFICER"}
-    )
-    return users
+    try:
+        if not db.is_connected():
+            await db.connect()
+        users = await db.user.find_many(
+            where={"role": "OFFICER"}
+        )
+        user_list = [User(**u.dict()) for u in users]
+        for user in user_list:
+            print(f"User fetched: {user.to_dict()}")
+        return JSONResponse(status_code=200, content=[user.to_dict() for user in user_list])
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
 
 

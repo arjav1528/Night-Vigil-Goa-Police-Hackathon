@@ -67,6 +67,9 @@ async def get_users():
 
 @app.delete("/users")
 async def delete_all_users():
+    if not db.is_connected():
+        await db.connect()
+    await db.faceembedding.delete_many()
     await db.user.delete_many()
     return {"detail": "All users deleted"}
 
