@@ -22,6 +22,7 @@ class _RegisterTabState extends State<RegisterTab> {
   final _empidController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool isObscured = true;
   final List<File> _selectedImages = [];
 
   Future<void> _pickImages() async {
@@ -97,16 +98,44 @@ class _RegisterTabState extends State<RegisterTab> {
                 SizedBox(height: 24.h),
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: isObscured,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    suffixIcon: GestureDetector(
+                      child: Icon(
+                        isObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          isObscured = !isObscured;
+                        });
+                      },
+                    ),
+                  ),
                   validator: (v) =>
                       v!.length < 6 ? 'Password must be at least 6 characters' : null,
                 ),
                 SizedBox(height: 24.h),
                 TextFormField(
                   controller: _confirmPasswordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Confirm Password'),
+                  obscureText: isObscured,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    suffixIcon: GestureDetector(
+                      child: Icon(
+                        isObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          isObscured = !isObscured;
+                        });
+                      },
+                    ),
+                  ),
                   validator: (v) =>
                       v != _passwordController.text ? 'Passwords do not match' : null,
                 ),

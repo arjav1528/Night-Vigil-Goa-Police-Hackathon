@@ -17,6 +17,7 @@ class _LoginTabState extends State<LoginTab> {
   final _formKey = GlobalKey<FormState>();
   final _empidController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool isObscured = true;
   bool _isLoading = false;
 
   Future<void> _performLogin() async {
@@ -89,8 +90,20 @@ class _LoginTabState extends State<LoginTab> {
             SizedBox(height: 24.h),
             TextFormField(
               controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
+              obscureText: isObscured,
+              decoration: InputDecoration(
+                suffixIcon: GestureDetector(
+                  child: Icon(
+                    isObscured
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                  onTap: () {
+                    setState(() {
+                      isObscured = !isObscured;
+                    });
+                  },
+                ),
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock_outline),
               ),
