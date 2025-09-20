@@ -41,11 +41,28 @@ async def shutdown():
     if db.is_connected():
         await db.disconnect()
 
+@app.get("/")
+async def root():
+    return {"message": "Face Recognition Microservice is running."}
+
+
 @app.post("/enroll")
 async def enroll_face(request: EnrollRequest):
     """
     Enrolls a user by processing their images and storing the embeddings in PostgreSQL.
     """
+    # --- FIX: First, verify the user actually exists ---
+    user = await db.user.find_unique(where={'id': request.user_id})
+    if not user:
+        # If the user is not found, we can't create an embedding for them.
+        # It's better to stop here and return a clear error.
+        raise HTTPException(
+            status_code=404, 
+            detail=f"User with ID '{request.user_id}' not found. Cannot enroll face."
+        )
+
+    # --- If the user exists, proceed as before ---
+    successful_enrollments = 0
     for url in request.image_urls:
         try:
             response = requests.get(url, stream=True)
@@ -54,16 +71,22 @@ async def enroll_face(request: EnrollRequest):
             embedding = fu.extract_embedding(img)
             
             if embedding:
-                # Store the new embedding in your PostgreSQL database
+                # Store the new embedding, now we know the user exists.
                 await db.faceembedding.create(
                     data={'userId': request.user_id, 'embedding': embedding}
                 )
+                successful_enrollments += 1
         except Exception as e:
             # Log the error but continue trying other images
             print(f"Failed to process image {url} for user {request.user_id}: {e}")
 
-    return {"message": f"Enrollment process completed for user {request.user_id}"}
+    if successful_enrollments == 0:
+         raise HTTPException(
+            status_code=400, 
+            detail=f"Could not process any of the provided images for user {request.user_id}."
+        )
 
+    return {"message": f"Successfully enrolled {successful_enrollments} images for user {request.user_id}"}
 
 @app.post("/verify")
 async def verify_face(request: VerifyRequest):
