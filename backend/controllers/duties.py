@@ -42,6 +42,7 @@ async def create_duty(duty_data: DutyCreateSchema, admin: User = Depends(get_cur
 
 @router.get("/")
 async def get_all_duties(admin: User = Depends(get_current_admin_user)):
+    print("Fetching all duties")
     return await db.dutyassignment.find_many(include={"officer": True})
 
 @router.get("/my-duties")
