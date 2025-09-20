@@ -35,15 +35,10 @@ async def middleware(request: Request, call_next):
     print(f"Request to {request.url.path}")
     print(f"Method: {request.method}")
     print(f"Header: {request.headers}")
-    try:
-        data = await request.json()
-        print(f"JSON Body: {data}")
+    
 
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        print("No JSON body found")
-        return Response("Invalid request", status_code=400)
+    response = await call_next(request)
+    return response
 
 
 

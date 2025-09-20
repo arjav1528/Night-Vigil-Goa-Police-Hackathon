@@ -71,7 +71,7 @@ class User:
             return False
         return pwd_context.verify(password, self.passwordHash)
 
-    def generate_token(self, secret_key, expiration_days=1):
+    def generate_token(self, secret_key, expiration_days=2):
         payload = {
             "empid": self.empid,
             "role": self.role.value,
