@@ -73,8 +73,18 @@ async def delete_all_users():
     await db.user.delete_many()
     return {"detail": "All users deleted"}
 
+@app.delete("/users/{empid}")
+async def delete_user(empid):
+    if not db.is_connected():
+        await db.connect()
 
-
+    user = await db.user.find_unique(where={"empid": empid})
+    if user:
+        await db.faceembedding.delete_many(where={"userId": user.id})
+        await db.user.delete(where={"empid": empid})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"detail": "User deleted"}
 
 
 if __name__ == "__main__":
