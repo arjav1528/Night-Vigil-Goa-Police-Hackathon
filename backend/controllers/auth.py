@@ -66,8 +66,7 @@ async def register(request: Request):
                 "passwordHash": user.passwordHash,
                 "createdAt": user.createdAt,
                 "updatedAt": user.updatedAt,
-                "faceEmbeddings": []
-                # Don't include faceEmbeddings - it will default to empty array
+                # Remove faceEmbeddings - it's a relation, not a direct field
             }
         )
 
@@ -126,9 +125,93 @@ async def login(request: Request):
         await db.disconnect()
         print(f"Error during login: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": str(e)})
+    
+
+@router.post("/admin/login")
+async def admin_login(request: Request):
+    try:
+        if not db.is_connected():
+            await db.connect()
+
+        request = await request.json()
+
+        print(request)
+        
+        empid = request.get("empid")
+        password = request.get("password")
+
+
+        if not empid or not password:
+            return JSONResponse(status_code=400, content={"message" : "Bad Request"})
+        
+        user = await db.user.find_unique(where={"empid": empid, "role" : "ADMIN"})
+        if not user:
+            return JSONResponse(status_code=404, content={"detail": "User not found"})
+        
+        print(user)
+
+        user_model = User(
+            id=user.id,
+            empid=user.empid,
+            role=user.role,
+            profileImage=user.profileImage,
+            passwordHash=user.passwordHash,
+            createdAt=user.createdAt,
+            updatedAt=user.updatedAt
+            # Remove the faceEmbeddings parameter
+        )
+        print(f"User model created: {user_model.empid}, role: {user_model.role}")
+
+        if not user_model.verify_password(password):
+            return JSONResponse(status_code=401, content={"detail": "Invalid credentials"})
+
+        token = user_model.generate_token(SECRET_KEY)
+
+        return JSONResponse(status_code=200, content={"access_token": token, "token_type": "bearer"})
+    
+
+    except Exception as e:
+        print(f"Error {e}")
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    
+
+
+@router.post('/admin/register')
+async def admin_register(request : Request):
+    try:
+        if not db.is_connected():
+            await db.connect()
+
+        request = await request.json()
+
+        empid = request.get("empid")
+        password = request.get("password")
+        # print(request.body)
+
+        
 
 
 
+        if not empid or not password:
+            return JSONResponse(status_code=400, content={"message" : "Bad t"})
+            
+        user = await db.user.find_unique(where={"empid": empid, "role" : "ADMIN"})
+        if user:
+            return JSONResponse(status_code=404, content={"detail": "User already exists"})
+        
+        
+
+        new_user = User(empid=empid, role="ADMIN")
+        new_user.set_password(password=password)
+
+        
+        await db.user.create(data=new_user.to_dict())
+
+        return JSONResponse(status_code=201, content={"detail": "User registered successfully"})
+    
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=500,content={"message" : "Internal Server Error"})
 
 @router.get("/me", response_model=UserOut)
 async def read_users_me(current_user: User = Depends(get_current_user)):

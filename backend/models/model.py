@@ -89,7 +89,6 @@ class User:
             "passwordHash": self.passwordHash,
             "createdAt": self.createdAt,
             "updatedAt": self.updatedAt,
-            "faceEmbeddings": []  # Add this line - empty array for new users
         }
     
 
