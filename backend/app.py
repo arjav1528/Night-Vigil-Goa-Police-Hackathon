@@ -1,5 +1,6 @@
 from time import time
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from prisma import Prisma
 from controllers import auth
@@ -7,6 +8,14 @@ from controllers import duties
 
 app = FastAPI()
 db = Prisma()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allows everything
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 
@@ -54,6 +63,14 @@ async def index():
 async def get_users():
     users = await db.user.find_many()
     return [u.dict() for u in users]
+
+
+@app.delete("/users")
+async def delete_all_users():
+    await db.user.delete_many()
+    return {"detail": "All users deleted"}
+
+
 
 
 

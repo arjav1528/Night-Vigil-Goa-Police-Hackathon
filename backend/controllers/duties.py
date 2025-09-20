@@ -42,8 +42,15 @@ async def create_duty(duty_data: DutyCreateSchema, admin: User = Depends(get_cur
 
 @router.get("/")
 async def get_all_duties(admin: User = Depends(get_current_admin_user)):
-    print("Fetching all duties")
-    return await db.dutyassignment.find_many(include={"officer": True})
+    try:
+        if not db.is_connected():
+            await db.connect()
+
+        duties = await db.dutyassignment.find_many()
+        print(duties)
+        return duties
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/my-duties")
 async def get_my_duties(current_user: User = Depends(get_current_user)):
