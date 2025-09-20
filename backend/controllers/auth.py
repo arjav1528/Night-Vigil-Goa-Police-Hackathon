@@ -58,7 +58,16 @@ async def register(request: Request):
         print(f"Creating user in database: {user.to_dict()}")
 
         result = await db.user.create(
-            data=user.to_dict()
+            data={
+                "id": user.id,
+                "empid": user.empid,
+                "role": user.role.value if isinstance(user.role, Enum) else user.role,
+                "profileImage": user.profileImage,
+                "passwordHash": user.passwordHash,
+                "createdAt": user.createdAt,
+                "updatedAt": user.updatedAt
+                # Don't include faceEmbeddings - it will default to empty array
+            }
         )
 
         if not result:

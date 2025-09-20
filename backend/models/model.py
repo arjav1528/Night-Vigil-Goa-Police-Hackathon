@@ -89,9 +89,31 @@ class User:
             "passwordHash": self.passwordHash,
             "createdAt": self.createdAt,
             "updatedAt": self.updatedAt,
+            "faceEmbeddings": []  # Add this line - empty array for new users
         }
     
 
+class FaceEmbedding:
+    def __init__(
+        self,
+        userId: str,
+        embedding: List[float],
+        createdAt: Optional[datetime] = None,
+        user: Optional[User] = None,
+    ):
+        self.id = generate_id()
+        self.userId = userId
+        self.embedding = embedding
+        self.createdAt = createdAt or datetime.now()
+        self.user = user
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "userId": self.userId,
+            "embedding": self.embedding,
+            "createdAt": self.createdAt.isoformat() if self.createdAt else None,
+        }
 
 
 class DutyAssignment:
