@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// --- COLOR PALETTE ---
-// Inspired by Goa Police branding for a professional and authoritative feel.
 class AppColors {
   static const Color primary = Color(0xFF0A2342); // Deep, official blue
   static const Color secondary = Color(0xFFD4AF37); // Khaki/gold accent

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:night_vigil/bloc/auth_bloc.dart';
+import 'package:night_vigil/models/duty_assignment_model.dart';
+import 'package:night_vigil/screen/check_in_screen.dart';
 import 'package:night_vigil/screen/home_screen.dart';
 import 'package:night_vigil/screen/login_screen.dart';
 import 'package:night_vigil/screen/splash_screen.dart';
@@ -12,7 +14,6 @@ class AppRouter {
   AppRouter({required this.authBloc});
 
   late final GoRouter router = GoRouter(
-    // Define all the navigation paths (routes) for your app
     routes: [
       GoRoute(
         path: '/splash',
@@ -26,16 +27,15 @@ class AppRouter {
         path: '/',
         builder: (context, state) => const HomeScreen(),
       ),
-      // Example of a route with a parameter:
-      // GoRoute(
-      //   path: '/duty/:id',
-      //   builder: (context, state) {
-      //     final dutyId = state.pathParameters['id']!;
-      //     return DutyDetailsScreen(dutyId: dutyId);
-      //   },
-      // ),
+      GoRoute(
+      path: '/duty/:dutyId',
+      builder: (context, state) {
+        final dutyId = state.pathParameters['dutyId']!;
+        final duty = state.extra as DutyAssignment; 
+        return CheckInScreen(duty: duty);
+      },
+    ),
     ],
-    // Set the initial location to a splash screen while the app initializes
     initialLocation: '/splash',
 
     redirect: (BuildContext context, GoRouterState state) {
@@ -57,12 +57,10 @@ class AppRouter {
       return null;
     },
 
-    // This crucial line makes GoRouter listen to changes in your AuthBloc state
     refreshListenable: GoRouterRefreshStream(authBloc.stream),
   );
 }
 
-// This helper class is what allows GoRouter to be reactive to your BLoC's stream of states.
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();

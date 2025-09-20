@@ -1,10 +1,12 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:night_vigil/api/auth_repository.dart';
-import 'package:night_vigil/api/duty_repository.dart'; // <-- Import DutyRepository
+import 'package:night_vigil/api/duty_repository.dart'; 
 import 'package:night_vigil/bloc/auth_bloc.dart';
+import 'package:night_vigil/firebase_options.dart';
 import 'package:night_vigil/router.dart';
 import 'package:night_vigil/theme.dart';
 
@@ -12,6 +14,10 @@ import 'package:night_vigil/theme.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+);
   await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
@@ -32,14 +38,14 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _authRepository = AuthRepository();
-    _dutyRepository = DutyRepository(); // <-- Create the instance
+    _dutyRepository = DutyRepository(); 
     _authBloc = AuthBloc(authRepository: _authRepository)..add(AppStarted());
     _appRouter = AppRouter(authBloc: _authBloc);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Use MultiRepositoryProvider to provide all your repositories
+  
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider.value(value: _authRepository),

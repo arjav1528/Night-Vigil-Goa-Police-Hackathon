@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:night_vigil/api/duty_repository.dart';
 import 'package:night_vigil/bloc/auth_bloc.dart';
 import 'package:night_vigil/bloc/duty_bloc.dart';
@@ -21,28 +22,22 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: () {
-              // Dispatch the LoggedOut event to the AuthBloc to handle logout
               context.read<AuthBloc>().add(LoggedOut());
             },
           ),
         ],
       ),
-      // Provide the DutyBloc to this part of the widget tree
       body: BlocProvider(
         create: (context) => DutyBloc(
-          // Access the globally provided DutyRepository
           dutyRepository: RepositoryProvider.of<DutyRepository>(context),
-        )..add(FetchDuties()), // Immediately fetch duties when the screen loads
+        )..add(FetchDuties()),
         child: BlocBuilder<DutyBloc, DutyState>(
           builder: (context, state) {
-            // --- Loading State ---
             if (state is DutyLoading || state is DutyInitial) {
               return const LoadingIndicator();
             }
 
-            // --- Success State ---
             if (state is DutyLoadSuccess) {
-              // Handle case where there are no duties
               if (state.duties.isEmpty) {
                 return Center(
                   child: Text(
@@ -52,7 +47,6 @@ class HomeScreen extends StatelessWidget {
                 );
               }
 
-              // Display the list of duties
               return ListView.builder(
                 padding: EdgeInsets.all(16.w),
                 itemCount: state.duties.length,
@@ -85,8 +79,7 @@ class HomeScreen extends StatelessWidget {
                         size: 16.sp,
                       ),
                       onTap: () {
-                        // Navigate to duty details screen in the future
-                        // context.go('/duty/${duty.id}');
+                        context.go('/duty/${duty.id}');
                       },
                     ),
                   );
@@ -94,7 +87,6 @@ class HomeScreen extends StatelessWidget {
               );
             }
 
-            // --- Failure State ---
             if (state is DutyLoadFailure) {
               return Center(
                 child: Padding(
@@ -110,7 +102,6 @@ class HomeScreen extends StatelessWidget {
               );
             }
 
-            // Default empty state
             return const SizedBox.shrink();
           },
         ),

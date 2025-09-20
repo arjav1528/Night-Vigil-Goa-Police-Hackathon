@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:night_vigil/api/auth_repository.dart'; // Make sure you're using the repository
+import 'package:night_vigil/api/auth_repository.dart'; 
 import 'package:night_vigil/bloc/auth_bloc.dart';
 import 'package:night_vigil/utils/custom_snackbar.dart';
-import 'package:night_vigil/utils/loading_indicator.dart'; // Your snackbar utility
+import 'package:night_vigil/utils/loading_indicator.dart';
 
 class LoginTab extends StatefulWidget {
   const LoginTab({super.key});
@@ -48,7 +47,7 @@ class _LoginTabState extends State<LoginTab> {
       if (mounted) {
         CustomSnackBar.show(
           context,
-          message: e.toString().replaceFirst('Exception: ', ''), // Clean up the error message
+          message: e.toString().replaceFirst('Exception: ', ''), 
           alertType: AlertType.error,
         );
       }

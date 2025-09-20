@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "425167993017",
+    "project_id": "night-vigil-4fa2e",
+    "storage_bucket": "night-vigil-4fa2e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425167993017:android:f4726873a92de91ac78368",
+        "android_client_info": {
+          "package_name": "com.vigil.night.night_vigil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBD4ul-UAnzpSUkrBGuEs_y3V-3drmHPqU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

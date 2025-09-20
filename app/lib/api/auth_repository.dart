@@ -41,16 +41,15 @@ class AuthRepository {
     );
   }
 
-  // --- Core Methods ---
 
   Future<String> login(String empid, String password) async {
     try {
-      print("Calling login API"); // Debugging line
+      print("Calling login API"); 
       final response = await _dio.post(
         '/users/login',
         data: {'empid': empid, 'password': password},
       );
-      print("Login API response: ${response.data}"); // Debugging line
+      print("Login API response: ${response.data}"); 
 
       if (response.statusCode == 200 && response.data['access_token'] != null) {
         final token = response.data['access_token'];
@@ -92,7 +91,7 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _secureStorage.delete(key: _tokenKey);
+    await _secureStorage.deleteAll();
   }
 
   Future<String?> getToken() async {

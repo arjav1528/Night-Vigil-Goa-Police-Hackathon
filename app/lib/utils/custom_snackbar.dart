@@ -24,14 +24,12 @@ class CustomSnackBar {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       content: Row(
         children: [
-          // Icon
           Icon(
             _alertConfig[alertType]!['icon'],
             color: _alertConfig[alertType]!['textColor'],
             size: 24.sp,
           ),
           SizedBox(width: 12.w),
-          // Message
           Expanded(
             child: Text(
               message,
@@ -51,29 +49,28 @@ class CustomSnackBar {
       ..showSnackBar(snackBar);
   }
 
-  // Configuration map for different alert types
   static final Map<AlertType, Map<String, dynamic>> _alertConfig = {
     AlertType.success: {
-      'background': const Color(0xFFE8F5E9), // Light Green
-      'textColor': const Color(0xFF1B5E20), // Dark Green
+      'background': const Color(0xFFE8F5E9), 
+      'textColor': const Color(0xFF1B5E20), 
       'borderColor': const Color(0xFF4CAF50),
       'icon': PhosphorIcons.checkCircle(),
     },
     AlertType.error: {
-      'background': const Color(0xFFFFEBEE), // Light Red
-      'textColor': const Color(0xFFB71C1C), // Dark Red
+      'background': const Color(0xFFFFEBEE), 
+      'textColor': const Color(0xFFB71C1C),
       'borderColor': const Color(0xFFD32F2F),
       'icon': PhosphorIcons.xCircle(),
     },
     AlertType.warning: {
-      'background': const Color(0xFFFFF8E1), // Light Amber
-      'textColor': const Color(0xFFFF6F00), // Dark Amber
+      'background': const Color(0xFFFFF8E1), 
+      'textColor': const Color(0xFFFF6F00), 
       'borderColor': const Color(0xFFFFA000),
       'icon': PhosphorIcons.warning(),
     },
     AlertType.info: {
-      'background': const Color(0xFFE3F2FD), // Light Blue
-      'textColor': AppColors.primary, // Using your theme's primary color
+      'background': const Color(0xFFE3F2FD), 
+      'textColor': AppColors.primary, 
       'borderColor': const Color(0xFF1976D2),
       'icon': PhosphorIcons.info(),
     },

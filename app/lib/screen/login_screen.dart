@@ -9,9 +9,8 @@ class AuthScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // This controller manages the tab state.
     return DefaultTabController(
-      length: 2, // The number of tabs
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Officer Portal'),

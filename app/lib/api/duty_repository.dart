@@ -14,7 +14,6 @@ class DutyRepository {
             baseUrl: dotenv.env['BACKEND_URL']!, // Use ! if you're sure it exists in .env
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 5),
-            // Explicitly set the content type header for all requests
             headers: {
               'Content-Type': 'application/json',
             }
@@ -47,19 +46,15 @@ class DutyRepository {
         throw Exception('Failed to load duties');
       }
     } on DioException catch (e) {
-      // --- THIS IS THE CRITICAL PART FOR DEBUGGING ---
       String errorMsg = 'An unknown error occurred.';
       if (e.response != null) {
-        // If the server sent a JSON error with a 'detail' key, show that.
         final responseData = e.response?.data;
         if (responseData is Map && responseData.containsKey('detail')) {
           errorMsg = responseData['detail'];
         } else {
-          // Otherwise, show the raw response data.
           errorMsg = 'Server returned an error: ${e.response?.statusCode}. Response: ${e.response?.data}';
         }
       } else {
-        // Handle network errors (no response from server)
         errorMsg = 'Network error: ${e.message}';
       }
       print("Error fetching duties: $errorMsg");
