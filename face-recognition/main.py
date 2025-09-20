@@ -45,6 +45,13 @@ async def shutdown():
 async def root():
     return {"message": "Face Recognition Microservice is running."}
 
+@app.get("/users")
+async def get_users():
+    """
+    Fetches all users from the PostgreSQL database.
+    """
+    users = await db.user.find_many()
+    return {"users": users}
 
 @app.post("/enroll")
 async def enroll_face(request: EnrollRequest):
