@@ -203,6 +203,7 @@ async def admin_register(request : Request):
 
         new_user = User(empid=empid, role="ADMIN")
         new_user.set_password(password=password)
+        print(f"new user : {new_user.to_dict()}")
 
         
         await db.user.create(data=new_user.to_dict())
