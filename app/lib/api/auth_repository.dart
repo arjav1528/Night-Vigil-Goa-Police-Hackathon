@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:night_vigil/main.dart';
-import 'package:night_vigil/screen/home_screen.dart';
+import 'package:night_vigil/screen/home_screen.dart' hide navigatorKey;
 import 'package:night_vigil/utils/custom_snackbar.dart';
 
 class AuthRepository {

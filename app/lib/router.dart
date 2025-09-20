@@ -50,7 +50,7 @@ class AppRouter {
         return '/login';
       }
 
-      if (authState is AuthAuthenticated && onLoginPage) {
+      if (authState is AuthAuthenticated && ( onLoginPage || state.matchedLocation == '/splash')) {
         return '/';
       }
 
