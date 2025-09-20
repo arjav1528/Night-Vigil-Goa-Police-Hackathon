@@ -65,7 +65,8 @@ async def register(request: Request):
                 "profileImage": user.profileImage,
                 "passwordHash": user.passwordHash,
                 "createdAt": user.createdAt,
-                "updatedAt": user.updatedAt
+                "updatedAt": user.updatedAt,
+                "faceEmbeddings": []
                 # Don't include faceEmbeddings - it will default to empty array
             }
         )
@@ -102,7 +103,16 @@ async def login(request: Request):
         
         print(user)
 
-        user_model = User(**user.dict())
+        user_model = User(
+            id=user.id,
+            empid=user.empid,
+            role=user.role,
+            profileImage=user.profileImage,
+            passwordHash=user.passwordHash,
+            createdAt=user.createdAt,
+            updatedAt=user.updatedAt
+            # Remove the faceEmbeddings parameter
+        )
         print(f"User model created: {user_model.empid}, role: {user_model.role}")
 
         if not user_model.verify_password(password):
