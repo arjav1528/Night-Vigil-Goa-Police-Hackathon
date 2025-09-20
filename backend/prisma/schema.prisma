@@ -14,12 +14,14 @@ datasource db {
 }
 
 
+
 model User {
   id           String       @id
   empid        String    @unique
   passwordHash String?   // Only required for SHOs/Admins
   role         Role      @default(OFFICER)
   profileImage String[]   // Path/URL for stored image
+  faceEmbeddings FaceEmbedding[]
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime?  @updatedAt
@@ -76,7 +78,17 @@ model Notification {
   // Relations
   user User @relation(fields: [userId], references: [id])
 }
+model FaceEmbedding {
+  id        String   @id @default(uuid())
+  userId    String
+  embedding Float[]  // This will store the array of numbers
+  createdAt DateTime @default(now())
 
+  // Relation back to the User model
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
 model DutyReport {
   id             String    @id
   officerId      String
