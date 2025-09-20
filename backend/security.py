@@ -6,6 +6,8 @@ from prisma import Prisma
 import os
 
 from models.model import User
+from dotenv import load_dotenv
+load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
@@ -29,6 +31,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             
     except JWTError:
         raise credentials_exception
+    
+    if not db.is_connected():
+        await db.connect()
         
     user = await db.user.find_unique(where={"empid": empid})
     if user is None:

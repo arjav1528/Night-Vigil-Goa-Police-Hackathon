@@ -46,6 +46,9 @@ async def get_all_duties(admin: User = Depends(get_current_admin_user)):
 
 @router.get("/my-duties")
 async def get_my_duties(current_user: User = Depends(get_current_user)):
+    if not db.is_connected():
+        await db.connect()
+    print(f"Fetching duties for user: {current_user.empid}")
     return await db.dutyassignment.find_many(where={"officerId": current_user.id})
 
 @router.post("/{duty_id}/checkin")
