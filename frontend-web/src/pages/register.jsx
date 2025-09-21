@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 export const Register = () => {
   const [empid, setEmpid] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // Added state
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -11,6 +12,11 @@ export const Register = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -36,7 +42,7 @@ export const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <div className="p-8 w-full max-w-md bg-surface rounded-lg shadow-lg">
         <h2 className="text-headline-md font-bold text-center text-primary">
           Admin Register
@@ -66,6 +72,18 @@ export const Register = () => {
               required
             />
           </div>
+          <div>
+            <label className="text-body-md font-medium text-on-surface">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-secondary focus:border-secondary text-on-surface"
+              required
+            />
+          </div>
           {error && <p className="text-error text-sm">{error}</p>}
           {success && <p className="text-green-600 text-sm">{success}</p>}
           <button
@@ -75,6 +93,14 @@ export const Register = () => {
             REGISTER
           </button>
         </form>
+        <div className="mt-4 text-center">
+          <p className="text-body-md font-medium text-on-surface">
+            Already an admin?{" "}
+            <a href="/login" className="text-primary hover:underline">
+              Log in
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -94,9 +94,9 @@ export const Dashboard = ({ onLogout }) => {
   };
 
   return (
-    <div className="flex h-screen bg-background text-on-background">
+    <div className="flex flex-col lg:flex-row h-screen bg-background text-on-background">
       {/* Sidebar - Officer List */}
-      <div className="w-1/3 border-r border-gray-200 overflow-y-auto shadow-md">
+      <div className="w-full lg:w-1/3 border-r border-gray-200 overflow-y-auto shadow-md">
         <div className="p-4 flex justify-between items-center bg-primary text-on-primary shadow-lg sticky top-0 z-10">
           <h1 className="text-title-lg font-bold">Officers</h1>
           <button
@@ -152,10 +152,7 @@ export const Dashboard = ({ onLogout }) => {
       </div>
 
       {/* Main Content - Map Embed */}
-      <div className="w-2/3 flex-1 flex flex-col">
-        <div className="p-4 bg-primary text-on-primary shadow-lg sticky top-0 z-10 h-16">
-          <h1 className="text-title-lg font-bold">Live Map</h1>
-        </div>
+      <div className="w-full lg:w-2/3 min-h-[320px] flex-1 flex flex-col">
         <div className="flex-1 h-full overflow-hidden">
           <MapComponent officersWithDuties={officers} />
         </div>

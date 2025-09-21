@@ -37,7 +37,7 @@ export const Login = ({ onLogin }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-background">
       <div className="p-8 w-full max-w-md bg-surface rounded-lg shadow-lg">
         <h2 className="text-headline-md font-bold text-center text-primary">
           Admin Login
@@ -75,6 +75,14 @@ export const Login = ({ onLogin }) => {
             LOGIN
           </button>
         </form>
+        <div className="mt-4 text-center">
+          <p className="text-body-md text-on-surface">
+            Admin Registration:{" "}
+            <a href="/register" className="text-primary hover:underline">
+              Register
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
