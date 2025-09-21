@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Login } from "./pages/login";
-import { Register } from "./pages/register";
+// import { Register } from "./pages/register";
 import { Dashboard } from "./pages/dashboard";
 
 function App() {
@@ -32,7 +32,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
-        <Route path="/register" element={<Register />} />
+        {/* <Route path="/register" element={<Register />} /> */}
         <Route
           path="/dashboard"
           element={

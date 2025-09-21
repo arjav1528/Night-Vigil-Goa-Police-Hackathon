@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Emblem from "../assets/Emblem_of_Goa_Police.png";
 
 export const Login = ({ onLogin }) => {
   const [empid, setEmpid] = useState("");
@@ -39,13 +40,14 @@ export const Login = ({ onLogin }) => {
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-background">
       <div className="p-8 w-full max-w-md bg-surface rounded-lg shadow-lg">
+        <img src={Emblem} alt="Emblem of Goa Police" className="w-32 mx-auto mb-4" />
         <h2 className="text-headline-md font-bold text-center text-primary">
-          Admin Login
+          Admin SHO Login
         </h2>
         <form onSubmit={handleLogin} className="mt-8 space-y-6">
           <div>
             <label className="text-body-md font-medium text-on-surface">
-              Employee ID
+              Officer ID
             </label>
             <input
               type="text"
@@ -76,11 +78,11 @@ export const Login = ({ onLogin }) => {
           </button>
         </form>
         <div className="mt-4 text-center">
-          <p className="text-body-md text-on-surface">
+          <p className="text-body-md font-medium text-on-surface">
             Admin Registration:{" "}
-            <a href="/register" className="text-primary hover:underline">
-              Register
-            </a>
+            <p className="text-primary hover:underline cursor-pointer">
+              Contact IT
+            </p>
           </p>
         </div>
       </div>
