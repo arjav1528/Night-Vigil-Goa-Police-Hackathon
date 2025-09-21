@@ -2,84 +2,100 @@ import React, { useState, useEffect } from "react";
 import { FaUserCircle } from "react-icons/fa"; // Using react-icons for a cleaner look
 import { IoIosLogOut } from "react-icons/io";
 import { IoLocationSharp } from "react-icons/io5";
+import { AssignDutyModal } from "../components/AssignDutyModal";
 
 export const Dashboard = ({ onLogout }) => {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedOfficer, setSelectedOfficer] = useState(null);
 
   const [mapIframeSrc, setMapIframeSrc] = useState(
     "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d492479.1875141335!2d74.00641279999999!3d15.349728500000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bbfba106336b741%3A0xeaf887ff62f34092!2sGoa!5e0!3m2!1sen!2sin!4v1758437603365!5m2!1sen!2sin"
   );
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      setError("");
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("No access token found. Please log in.");
+      }
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
+      };
+
+      const [officersResponse, dutiesResponse] = await Promise.all([
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/duties/users/all`, {
+          headers,
+        }),
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/duties`, { headers }),
+      ]);
+
+      const officersData = await handleResponse(officersResponse, "officers");
+      const dutiesData = await handleResponse(dutiesResponse, "duties");
+
+      const dutiesMap = {};
+      dutiesData.forEach((duty) => {
+        dutiesMap[duty.officerId] = duty;
+      });
+
+      const mergedOfficers = officersData.map((officer) => ({
+        ...officer,
+        assignedDuty: dutiesMap[officer.id] || null,
+      }));
+
+      setOfficers(mergedOfficers);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching dashboard data: ", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResponse = async (response, dataType) => {
+    const contentType = response.headers.get("content-type");
+    if (
+      !response.ok ||
+      !contentType ||
+      !contentType.includes("application/json")
+    ) {
+      const text = await response.text();
       try {
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-          throw new Error("No access token found. Please log in.");
-        }
-
-        const headers = {
-          Authorization: `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "true",
-        };
-
-        const [officersResponse, dutiesResponse] = await Promise.all([
-          fetch(`${import.meta.env.VITE_BACKEND_URL}/duties/users/all`, {
-            headers,
-          }),
-          fetch(`${import.meta.env.VITE_BACKEND_URL}/duties`, { headers }),
-        ]);
-
-        const officersData = await handleResponse(officersResponse, "officers");
-        const dutiesData = await handleResponse(dutiesResponse, "duties");
-
-        // Create a map for quick duty lookup by officerId
-        const dutiesMap = {};
-        dutiesData.forEach((duty) => {
-          dutiesMap[duty.officerId] = duty;
-        });
-
-        // Merge officer and duty data
-        const mergedOfficers = officersData.map((officer) => ({
-          ...officer,
-          assignedDuty: dutiesMap[officer.id] || null,
-        }));
-
-        setOfficers(mergedOfficers);
-      } catch (err) {
-        setError(err.message);
-        console.error("Error fetching dashboard data: ", err);
-      } finally {
-        setLoading(false);
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.detail || `Failed to fetch ${dataType}.`);
+      } catch {
+        throw new Error(
+          `Failed to fetch ${dataType}. The server might be returning an error page.`
+        );
       }
-    };
+    }
+    return response.json();
+  };
 
-    const handleResponse = async (response, dataType) => {
-      const contentType = response.headers.get("content-type");
-      if (
-        !response.ok ||
-        !contentType ||
-        !contentType.includes("application/json")
-      ) {
-        const text = await response.text();
-        try {
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.detail || `Failed to fetch ${dataType}.`);
-        } catch {
-          throw new Error(
-            `Failed to fetch ${dataType}. The server might be returning an error page.`
-          );
-        }
-      }
-      return response.json();
-    };
-
+  useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const openAssignModal = (officer) => {
+    setSelectedOfficer(officer);
+    setShowAssignModal(true);
+  };
+
+  const closeAssignModal = () => {
+    setShowAssignModal(false);
+    setSelectedOfficer(null);
+  };
+
+  const handleDutyAssigned = () => {
+    // Re-fetch all data to show the updated assignment status
+    fetchDashboardData();
+  };
 
   return (
     <div className="flex h-screen bg-background text-on-background">
@@ -123,6 +139,7 @@ export const Dashboard = ({ onLogout }) => {
                   )}
                 </div>
                 <button
+                  onClick={() => openAssignModal(officer)}
                   className={`px-3 py-1 text-sm rounded-md transition-colors ${
                     officer.assignedDuty
                       ? "bg-gray-400 text-gray-700 cursor-not-allowed"
@@ -155,6 +172,13 @@ export const Dashboard = ({ onLogout }) => {
           />
         </div>
       </div>
+      {showAssignModal && selectedOfficer && (
+        <AssignDutyModal
+          officer={selectedOfficer}
+          onClose={closeAssignModal}
+          onDutyAssigned={handleDutyAssigned}
+        />
+      )}
     </div>
   );
 };
