@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart'; // <-- Import the new package
+import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import 'package:night_vigil/api/duty_repository.dart';
 import 'package:night_vigil/bloc/auth_bloc.dart';
 import 'package:night_vigil/bloc/duty_bloc.dart';
-import 'package:night_vigil/utils/loading_indicator.dart';
-import 'package:go_router/go_router.dart';
 import 'package:night_vigil/models/duty_assignment_model.dart';
+import 'package:night_vigil/utils/custom_snackbar.dart'; // Import your snackbar
+import 'package:night_vigil/utils/loading_indicator.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -52,44 +53,48 @@ class HomeScreen extends StatelessWidget {
                 itemCount: state.duties.length,
                 itemBuilder: (context, index) {
                   final duty = state.duties[index];
-
-                  // --- THIS IS THE NEW FORMATTING LOGIC ---
-                  // Format the start and end times into a readable string
                   final startTimeFormatted = DateFormat('MMM d, hh:mm a').format(duty.startTime);
                   final endTimeFormatted = DateFormat('hh:mm a').format(duty.endTime);
                   final dutyTimeString = '$startTimeFormatted - $endTimeFormatted';
-                  // ---------------------------------------------
 
                   return Card(
-                    color: duty.status == 'Completed'
-                        ? Colors.green[50]
-                        : duty.status == 'Missed'
-                            ? Colors.red[50]
-                            : Colors.white,
                     margin: EdgeInsets.only(bottom: 16.h),
                     child: ListTile(
                       contentPadding: EdgeInsets.symmetric(
                         vertical: 12.h,
                         horizontal: 16.w,
                       ),
-                      title: Text(
-                        duty.location,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      // --- UPDATED SUBTITLE ---
+                      title: Text(duty.location, style: Theme.of(context).textTheme.titleLarge),
                       subtitle: Text(
                         'Time: $dutyTimeString\nStatus: ${duty.status}',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      isThreeLine: true, // Allow the ListTile to have more height
-                      // -------------------------
-                      trailing: Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16.sp,
-                      ),
+                      isThreeLine: true,
+                      trailing: Icon(Icons.arrow_forward_ios, size: 16.sp),
+                      // --- THIS IS THE NEW LOGIC ---
                       onTap: () {
-                        context.go('/duty/${duty.id}', extra: duty);
+                        final now = DateTime.now();
+                        // Check if the current time is within the duty period
+                        if (now.isAfter(duty.startTime) && now.isBefore(duty.endTime)) {
+                          // If it is, navigate to the check-in screen
+                          context.go('/duty/${duty.id}', extra: duty);
+                        } else if (now.isBefore(duty.startTime)) {
+                          // If the duty hasn't started yet, show a warning
+                          CustomSnackBar.show(
+                            context,
+                            message: 'This duty has not started yet.',
+                            alertType: AlertType.warning,
+                          );
+                        } else {
+                          // If the duty has already ended, show an error
+                          CustomSnackBar.show(
+                            context,
+                            message: 'This duty has already ended.',
+                            alertType: AlertType.error,
+                          );
+                        }
                       },
+                      // ------------------------------
                     ),
                   );
                 },
