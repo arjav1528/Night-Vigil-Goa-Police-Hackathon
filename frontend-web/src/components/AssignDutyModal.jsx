@@ -1,10 +1,45 @@
 import React, { useState } from "react";
 import { IoCloseSharp } from "react-icons/io5";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { getMarkerColor } from "./MapComponent"; // Import the marker color function
+
+const LocationMarker = ({ setPosition, color }) => {
+  const [markerPosition, setMarkerPosition] = useState(null);
+  const map = useMapEvents({
+    click(e) {
+      setMarkerPosition(e.latlng);
+      setPosition(e.latlng);
+    },
+  });
+
+  const onDragEnd = (e) => {
+    const { lat, lng } = e.target.getLatLng();
+    setPosition({ lat, lng });
+  };
+
+  const customIcon = new L.DivIcon({
+    html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="2" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
+    className: "leaflet-custom-marker",
+  });
+
+  return markerPosition === null ? null : (
+    <Marker
+      position={markerPosition}
+      draggable={true}
+      icon={customIcon}
+      eventHandlers={{ dragend: onDragEnd }}
+    />
+  );
+};
 
 export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
   const [location, setLocation] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [position, setPosition] = useState(null);
   const [radius, setRadius] = useState("100");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -14,6 +49,10 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!position) {
+      setError("Please select a location on the map.");
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -25,8 +64,8 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
     const payload = {
       officerId: officer.id,
       location,
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
+      latitude: position.lat,
+      longitude: position.lng,
       radius: parseFloat(radius),
       startTime: formattedStartTime,
       endTime: formattedEndTime,
@@ -61,9 +100,11 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
     }
   };
 
+  const markerColor = getMarkerColor(officer.id);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/55 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-xl relative transform transition-all duration-300 ease-in-out scale-100 opacity-100">
+      <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl relative transform transition-all duration-300 ease-in-out scale-100 opacity-100">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
@@ -75,6 +116,20 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
+            <div className="w-full h-80 rounded-lg overflow-hidden shadow-md">
+              <MapContainer
+                center={[15.3, 74.0]}
+                zoom={10}
+                scrollWheelZoom={true}
+                className="w-full h-full"
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                <LocationMarker setPosition={setPosition} color={markerColor} />
+              </MapContainer>
+            </div>
             <div>
               <label
                 htmlFor="location"
@@ -104,11 +159,10 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
                   id="latitude"
                   type="number"
                   step="any"
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                  placeholder="e.g., 34.0522"
+                  value={position?.lat || ""}
+                  readOnly
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-gray-100"
+                  placeholder="Click on map to get coordinates"
                 />
               </div>
               <div>
@@ -122,11 +176,10 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
                   id="longitude"
                   type="number"
                   step="any"
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                  placeholder="e.g., -118.2437"
+                  value={position?.lng || ""}
+                  readOnly
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-gray-100"
+                  placeholder="Click on map to get coordinates"
                 />
               </div>
             </div>

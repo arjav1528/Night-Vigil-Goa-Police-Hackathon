@@ -195,9 +195,10 @@ export const Dashboard = ({ onLogout }) => {
                           }).format(new Date(officer.assignedDuty.endTime))}
                         </span>
                       </div>
-                      {/* Added back the status display */}
-                      <div className={`text-sm font-medium flex flex-row gap-2 mt-1`}>
-                        Status:{" "}
+                      <div
+                        className={`text-sm font-medium flex flex-row gap-2 mt-1`}
+                      >
+                        Status:
                         <p
                           className={` ${getStatusColor(
                             officer.assignedDuty.status
