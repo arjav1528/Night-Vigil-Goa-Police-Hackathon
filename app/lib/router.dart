@@ -28,13 +28,26 @@ class AppRouter {
         builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
-      path: '/duty/:dutyId',
-      builder: (context, state) {
-        final dutyId = state.pathParameters['dutyId']!;
-        final duty = state.extra as DutyAssignment; 
-        return CheckInScreen(duty: duty);
-      },
-    ),
+        path: '/duty/:dutyId',
+        builder: (context, state) {
+          // --- THIS IS THE FIX ---
+          // Check if the 'extra' data exists before trying to use it.
+          if (state.extra is DutyAssignment && state.extra != null) {
+            final duty = state.extra as DutyAssignment;
+            return CheckInScreen(duty: duty);
+          } else {
+            // If the data is missing, show an error or an empty screen.
+            // It's often best to redirect back home in this case.
+            // Note: A direct redirect isn't recommended inside a builder.
+            // This is a simple fallback UI.
+            return const Scaffold(
+              body: Center(
+                child: Text('Error: Duty details not found.'),
+              ),
+            );
+          }
+        },
+      ),
     ],
     initialLocation: '/splash',
 
