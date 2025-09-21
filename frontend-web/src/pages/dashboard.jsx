@@ -121,6 +121,19 @@ export const Dashboard = ({ onLogout }) => {
     fetchDashboardData();
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "COMPLETED":
+        return "text-green-500";
+      case "PENDING":
+        return "text-orange-500";
+      case "MISSED":
+        return "text-red-500";
+      default:
+        return "text-gray-500";
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-background text-on-background">
       {/* Sidebar - Officer List */}
@@ -154,7 +167,7 @@ export const Dashboard = ({ onLogout }) => {
                   </div>
                   {officer.assignedDuty && (
                     <>
-                      <div className="text-sm text-gray-500 mt-1 flex items-center">
+                      <div className="text-sm text-gray-800 mt-1 flex items-center">
                         <span
                           className="w-3 h-3 rounded-full mr-2"
                           style={{
@@ -166,20 +179,32 @@ export const Dashboard = ({ onLogout }) => {
                           {officer.assignedDuty.location}
                         </span>
                       </div>
-                      {/* New section for duty start and end times */}
                       <div className="text-xs text-gray-800 mt-1 flex items-center">
-                        <span className="font-semibold mr-1">Time:</span>
+                        <span className="font-medium mr-1">Time:</span>
                         <span>
                           {new Intl.DateTimeFormat("en-US", {
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "UTC",
                           }).format(new Date(officer.assignedDuty.startTime))}
                           {" - "}
                           {new Intl.DateTimeFormat("en-US", {
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "UTC",
                           }).format(new Date(officer.assignedDuty.endTime))}
                         </span>
+                      </div>
+                      {/* Added back the status display */}
+                      <div className={`text-sm font-medium flex flex-row gap-2 mt-1`}>
+                        Status:{" "}
+                        <p
+                          className={` ${getStatusColor(
+                            officer.assignedDuty.status
+                          )}`}
+                        >
+                          {officer.assignedDuty.status}
+                        </p>
                       </div>
                       {officer.verificationData && (
                         <div className="text-sm text-gray-500 mt-1 flex items-center gap-4">
