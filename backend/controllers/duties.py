@@ -28,7 +28,8 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 @router.post("/", status_code=201)
 async def create_duty(duty_data: DutyCreateSchema, admin: User = Depends(get_current_admin_user)):
-    new_duty = DutyAssignment(
+    try:
+        new_duty = DutyAssignment(
         officerId=duty_data.officerId,
         assignedBy=admin.id,
         location=duty_data.location,
@@ -37,9 +38,13 @@ async def create_duty(duty_data: DutyCreateSchema, admin: User = Depends(get_cur
         radius=duty_data.radius,
         startTime=duty_data.startTime,
         endTime=duty_data.endTime
-    )
-    created_record = await db.dutyassignment.create(data=new_duty.to_dict())
-    return created_record
+        )
+        if not db.is_connected():
+            await db.connect()
+        created_record = await db.dutyassignment.create(data=new_duty.to_dict())
+        return created_record
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/")
 async def get_all_duties(admin: User = Depends(get_current_admin_user)):
@@ -51,7 +56,7 @@ async def get_all_duties(admin: User = Depends(get_current_admin_user)):
         print(duties)
         return duties
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/my-duties")
 async def get_my_duties(current_user: User = Depends(get_current_user)):
@@ -66,33 +71,45 @@ async def duty_check_in(
     check_in_data: CheckInSchema,  
     current_user: User = Depends(get_current_user)
 ):
-    duty = await db.dutyassignment.find_unique(where={"id": duty_id})
-    if not duty or duty.officerId != current_user.id:
-        raise HTTPException(status_code=403, detail="Duty not found or not assigned to you.")
+    try:
+        if not db.is_connected():
+            await db.connect()
 
-    distance = calculate_distance(check_in_data.latitude, check_in_data.longitude, duty.latitude, duty.longitude)
-    location_verified = distance <= duty.radius
+        duty = await db.dutyassignment.find_unique(where={"id": duty_id})
+        if not duty or duty.officerId != current_user.id:
+            raise HTTPException(status_code=403, detail="Duty not found or not assigned to you.")
 
-    face_verified = True
+        distance = calculate_distance(check_in_data.latitude, check_in_data.longitude, duty.latitude, duty.longitude)
+        location_verified = distance <= duty.radius
 
-    duty_log = DutyLog(
-        dutyId=duty_id,
-        officerId=current_user.id,
-        selfiePath=check_in_data.selfieUrl,
-        locationVerified=location_verified,
-        faceVerified=face_verified,
-        remarks=check_in_data.remarks
-    )
-    
-    await db.dutylog.create(data=duty_log.to_dict())
+        if not location_verified:
+            return JSONResponse(status_code=400, content={"detail": "You are outside the duty location radius."})
 
-    if location_verified and face_verified:
-        await db.dutyassignment.update(
-            where={"id": duty_id},
-            data={"status": DutyStatus.COMPLETED.value}
-        )
+        face_verified = True
 
-    return {"status": "Check-in successful", "location_verified": location_verified, "face_verified": face_verified}
+        # Create the duty log data directly for Prisma
+        duty_log_data = {
+            "id": DutyLog.generate_id() if hasattr(DutyLog, 'generate_id') else __import__('uuid').uuid4().hex,
+            "dutyId": duty_id,
+            "officerId": current_user.id,
+            "checkinTime": datetime.now(),  # Use datetime object directly
+            "selfiePath": check_in_data.selfieUrl,
+            "locationVerified": location_verified,
+            "faceVerified": face_verified,
+            "remarks": check_in_data.remarks
+        }
+        
+        await db.dutylog.create(data=duty_log_data)
+
+        if location_verified and face_verified:
+            await db.dutyassignment.update(
+                where={"id": duty_id},
+                data={"status": DutyStatus.COMPLETED.value}
+            )
+
+        return {"status": "Check-in successful", "location_verified": location_verified, "face_verified": face_verified}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
 
