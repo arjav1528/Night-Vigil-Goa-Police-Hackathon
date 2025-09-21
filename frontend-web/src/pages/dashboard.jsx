@@ -11,9 +11,8 @@ export const Dashboard = ({ onLogout }) => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState(null);
 
-  const [mapIframeSrc, setMapIframeSrc] = useState(
-    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d492479.1875141335!2d74.00641279999999!3d15.349728500000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bbfba106336b741%3A0xeaf887ff62f34092!2sGoa!5e0!3m2!1sen!2sin!4v1758437603365!5m2!1sen!2sin"
-  );
+  const mapIframeSrc =
+    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d492479.1875141335!2d74.00641279999999!3d15.349728500000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bbfba106336b741%3A0xeaf887ff62f34092!2sGoa!5e0!3m2!1sen!2sin!4v1758437603365!5m2!1sen!2sin";
 
   const fetchDashboardData = async () => {
     setLoading(true);
