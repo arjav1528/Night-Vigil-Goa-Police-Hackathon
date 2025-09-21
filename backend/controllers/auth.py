@@ -212,11 +212,6 @@ async def admin_register(request : Request):
 
         empid = request.get("empid")
         password = request.get("password")
-        # print(request.body)
-
-        
-
-
 
         if not empid or not password:
             return JSONResponse(status_code=400, content={"message" : "Bad t"})
@@ -228,11 +223,19 @@ async def admin_register(request : Request):
         
 
         new_user = User(empid=empid, role="ADMIN")
+        # print(f"new user before setting password : {new_user.to_dict()}")
         new_user.set_password(password=password)
         print(f"new user : {new_user.to_dict()}")
 
         
-        await db.user.create(data=new_user.to_dict())
+        await db.user.create(data={
+            "id": new_user.id,
+            "empid": new_user.empid,
+            "role": new_user.role.value if isinstance(new_user.role, Enum) else new_user.role,
+            "passwordHash": new_user.passwordHash,
+            "createdAt": new_user.createdAt,
+            "updatedAt": new_user.updatedAt,
+        })
 
         return JSONResponse(status_code=201, content={"detail": "User registered successfully"})
     

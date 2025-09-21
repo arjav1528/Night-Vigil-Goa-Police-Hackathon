@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from prisma import Prisma
 import os
 from models.model import User, DutyAssignment, DutyLog, DutyStatus
-from models.schemas import CheckInSchema, DutyCreateSchema, LocationUpdateSchema, UserOut
+from models.schemas import CheckInSchema, DutyCreateSchema, LocationUpdateRequest, LocationUpdateSchema, UserOut
 from security import get_current_admin_user, get_current_user
 from dotenv import load_dotenv
 from enum import Enum
@@ -118,12 +118,11 @@ async def duty_check_in(
 
 
 
-        # Create the duty log data directly for Prisma
         duty_log_data = {
             "id": DutyLog.generate_id() if hasattr(DutyLog, 'generate_id') else __import__('uuid').uuid4().hex,
             "dutyId": duty_id,
             "officerId": current_user.id,
-            "checkinTime": datetime.now(),  # Use datetime object directly
+            "checkinTime": datetime.now(), 
             "selfiePath": check_in_data.selfieUrl,
             "locationVerified": location_verified,
             "faceVerified": face_verified,
@@ -184,3 +183,68 @@ async def get_all_users(admin: User = Depends(get_current_admin_user)):
 
 
 
+
+@router.post("/location-update")
+async def location_update(
+    request: LocationUpdateRequest,
+    current_user: User = Depends(get_current_user)
+):
+    
+    print(f"--- ALERT: Officer {current_user.empid} is outside their duty radius! ---")
+    
+    try:
+        # 1. Find the most recent log for the given duty
+        latest_log = await db.dutylog.find_first(
+            where={"dutyId": request.dutyId},
+            order={"checkinTime": "desc"} # 'desc' gets the most recent one
+        )
+
+        if not latest_log:
+            # This case happens if the officer is out of radius before their first check-in
+            # We can create an initial log here.
+            await db.dutylog.create(data={
+                'dutyId': request.dutyId,
+                'officerId': current_user.id,
+                'locationVerified': request.location_verified,
+                'remarks': f"Officer started duty outside of designated radius at ({request.latitude}, {request.longitude}).",
+                'updatedAt': datetime.now().isoformat()
+            })
+            return {"status": "initial_out_of_radius_log_created"}
+
+        # 2. Update the found log with the new status
+        await db.dutylog.update(
+            where={"id": latest_log.id},
+            data={
+                'locationVerified': request.location_verified,
+                'remarks': f"Officer detected outside duty radius at ({request.latitude}, {request.longitude}). Last checked at {datetime.now().isoformat()}"
+            }
+        )
+
+        return {"status": "latest_log_updated_successfully"}
+    
+    except Exception as e:
+        print(f"Failed to update duty log for out-of-radius event: {e}")
+        raise HTTPException(status_code=500, detail="Could not update the location log.")
+    
+
+
+    
+
+@router.get("/location-update/{id}")
+async def get_location_updates(request: requests.Request, id: str):
+    try:
+        location_update = await db.dutylog.find_first(
+            where={"officerId": id},
+            order={"updatedAt": "desc"} 
+        )
+
+
+        if not location_update:
+            return JSONResponse(status_code=404, content={"detail": "No location updates found for this officer."})
+        
+
+
+        return JSONResponse(status_code=200, content=location_update)
+    except Exception as e:
+        print(f"Error fetching location updates: {e}")
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})

@@ -30,3 +30,10 @@ class CheckInSchema(BaseModel):
 class LocationUpdateSchema(BaseModel):
     latitude: float
     longitude: float
+
+
+class LocationUpdateRequest(BaseModel):
+    latitude: float
+    longitude: float
+    dutyId: str
+    location_verified: bool
