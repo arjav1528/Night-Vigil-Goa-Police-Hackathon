@@ -91,6 +91,30 @@ class DutyRepository {
     }
   }
 
+  // ... (inside your DutyRepository class)
+
+  Future<void> sendOutOfRadiusAlert({
+    required String dutyId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      // This method does not need to handle a response, just send the data.
+      await _dio.post(
+        '/duties/location-update',
+        data: {
+          'dutyId': dutyId,
+          'latitude': latitude,
+          'longitude': longitude,
+        },
+      );
+      print('Successfully sent out-of-radius alert to backend.');
+    } on DioException catch (e) {
+      // We can just print the error here, as there's no UI to update.
+      print('Failed to send location alert: ${e.message}');
+    }
+  }
+
 
   
 }
