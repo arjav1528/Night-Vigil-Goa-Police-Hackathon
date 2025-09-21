@@ -142,7 +142,7 @@ export const Dashboard = ({ onLogout }) => {
           <h1 className="text-title-lg font-bold">Officers</h1>
           <button
             onClick={onLogout}
-            className="flex items-center gap-2 px-3 py-1 bg-secondary text-on-secondary rounded-md text-label-lg hover:bg-opacity-80 transition-colors"
+            className="flex items-center gap-2 px-3 py-1 bg-secondary text-on-secondary rounded-md text-label-lg hover:bg-opacity-80 transition-colors cursor-pointer"
           >
             <IoIosLogOut />
             Logout
@@ -162,7 +162,7 @@ export const Dashboard = ({ onLogout }) => {
                   <div className="font-semibold text-on-surface">
                     Officer ID: {officer.empid}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs text-gray-500">
                     Role: {officer.role}
                   </div>
                   {officer.assignedDuty && (
@@ -179,7 +179,7 @@ export const Dashboard = ({ onLogout }) => {
                           {officer.assignedDuty.location}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-800 mt-1 flex items-center">
+                      <div className="text-sm text-gray-800 mt-1 flex items-center">
                         <span className="font-medium mr-1">Time:</span>
                         <span>
                           {new Intl.DateTimeFormat("en-US", {
@@ -239,7 +239,7 @@ export const Dashboard = ({ onLogout }) => {
                   className={`px-3 py-1 text-sm rounded-md transition-colors ${
                     officer.assignedDuty
                       ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                      : "text-primary border border-primary hover:bg-primary hover:text-on-primary"
+                      : "text-primary border border-primary hover:bg-primary hover:text-on-primary cursor-pointer"
                   }`}
                   disabled={!!officer.assignedDuty}
                 >

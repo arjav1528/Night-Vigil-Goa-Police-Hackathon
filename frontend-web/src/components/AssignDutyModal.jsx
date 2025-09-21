@@ -270,7 +270,7 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
               className={`px-6 py-2 rounded-lg font-semibold text-white transition-colors duration-200 ${
                 loading
                   ? "bg-blue-300 cursor-not-allowed"
-                  : "bg-primary hover:bg-blue-700"
+                  : "bg-primary hover:bg-blue-700 cursor-pointer"
               }`}
             >
               {loading ? "Assigning..." : "Assign Duty"}
