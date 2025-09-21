@@ -31,7 +31,7 @@ export const Login = ({ onLogin }) => {
 
       localStorage.setItem("accessToken", data.access_token);
       onLogin();
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       setError(err.message);
     }
