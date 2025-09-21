@@ -71,6 +71,7 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
         latitude: position.latitude,
         longitude: position.longitude,
         selfieUrl: selfieUrl,
+        empid: event.empid,
       );
       print("Step 3 SUCCESS: Backend confirmed check-in.");
 

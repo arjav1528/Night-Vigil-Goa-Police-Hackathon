@@ -7,10 +7,15 @@ import os
 from models.model import User, DutyAssignment, DutyLog, DutyStatus
 from models.schemas import CheckInSchema, DutyCreateSchema, LocationUpdateSchema, UserOut
 from security import get_current_admin_user, get_current_user
+from dotenv import load_dotenv
+from enum import Enum
+import requests
+from fastapi.concurrency import run_in_threadpool
+load_dotenv()
 
 
 
-
+FACE_RECOG_SERVICE_URL = os.getenv("FACE_RECOG_SERVICE_URL")
 
 router = APIRouter(prefix="/duties", tags=["Duties"])
 db = Prisma()
@@ -75,6 +80,8 @@ async def duty_check_in(
         if not db.is_connected():
             await db.connect()
 
+        print(f"User {current_user.empid} attempting to check in for duty {duty_id} with data")
+
         duty = await db.dutyassignment.find_unique(where={"id": duty_id})
         if not duty or duty.officerId != current_user.id:
             raise HTTPException(status_code=403, detail="Duty not found or not assigned to you.")
@@ -85,7 +92,31 @@ async def duty_check_in(
         if not location_verified:
             return JSONResponse(status_code=400, content={"detail": "You are outside the duty location radius."})
 
-        face_verified = True
+        face_verified = False
+
+        if FACE_RECOG_SERVICE_URL and check_in_data.selfieUrl:
+            try:
+                verify_payload = {
+                    "user_id": current_user.id,
+                    "selfie_url": check_in_data.selfieUrl
+                }
+                face_response = await run_in_threadpool(
+                    requests.post, 
+                    url=f"{FACE_RECOG_SERVICE_URL}/verify", 
+                    json=verify_payload
+                )
+                if face_response.status_code == 200:
+                    face_result = face_response.json()
+                    face_verified = face_result.get("verified", False)
+
+                    if not face_verified:
+                        return JSONResponse(status_code=400, content={"detail": "Face verification failed."})
+                else:
+                    return JSONResponse(status_code=face_response.status_code, content={"detail": "Face recognition failed"})
+            except Exception as e:
+                return JSONResponse(status_code=500, content={"detail": f"Error calling face recognition service: {str(e)}"})
+
+
 
         # Create the duty log data directly for Prisma
         duty_log_data = {
@@ -107,7 +138,7 @@ async def duty_check_in(
                 data={"status": DutyStatus.COMPLETED.value}
             )
 
-        return {"status": "Check-in successful", "location_verified": location_verified, "face_verified": face_verified}
+        return {"status": "success", "location_verified": location_verified, "face_verified": face_verified}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 

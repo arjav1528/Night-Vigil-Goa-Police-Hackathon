@@ -15,8 +15,8 @@ class AuthRepository {
       : _dio = Dio(
           BaseOptions(
             baseUrl: dotenv.env['BACKEND_URL'] ?? 'http://localhost:8000',
-            connectTimeout: const Duration(seconds: 5),
-            receiveTimeout: const Duration(seconds: 3),
+            connectTimeout: const Duration(seconds: 20),
+            receiveTimeout: const Duration(seconds: 20),
           ),
         ),
         _secureStorage = const FlutterSecureStorage() {

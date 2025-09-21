@@ -80,6 +80,9 @@ async def delete_user(empid):
 
     user = await db.user.find_unique(where={"empid": empid})
     if user:
+        await db.notification.delete_many(where={"userId": user.id})
+        await db.dutyreport.delete_many(where={"officerId": user.id})
+        await db.dutylog.delete_many(where={"officerId": user.id})
         await db.dutyassignment.delete_many(where={"officerId": user.id})
         await db.faceembedding.delete_many(where={"userId": user.id})
         await db.user.delete(where={"empid": empid})

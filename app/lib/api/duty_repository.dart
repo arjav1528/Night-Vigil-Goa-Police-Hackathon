@@ -12,8 +12,8 @@ class DutyRepository {
       : _dio = Dio(
           BaseOptions(
             baseUrl: dotenv.env['BACKEND_URL']!, // Use ! if you're sure it exists in .env
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 5),
+            connectTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
             headers: {
               'Content-Type': 'application/json',
             }
@@ -62,36 +62,34 @@ class DutyRepository {
     }
   }
 
-  // ... (inside your DutyRepository class)
 
-Future<void> checkIn({
-  required String dutyId,
-  required double latitude,
-  required double longitude,
-  required String selfieUrl,
-}) async {
-  try {
-    // The endpoint now receives a JSON body, not form data
-    print("Initiating check-in for dutyId: $dutyId with location ($latitude, $longitude) and selfieUrl: $selfieUrl");
-    final response = await _dio.post(
-      '/duties/$dutyId/checkin',
-      data: {
-        'latitude': latitude,
-        'longitude': longitude,
-        'selfieUrl': selfieUrl,
-      },
-    );
 
-    print("Check-in response: ${response.data}");
+  Future<void> checkIn({
+    required String dutyId,
+    required double latitude,
+    required double longitude,
+    required String selfieUrl,
+    required String empid, // Keep empid for consistency
+  }) async {
+    try {
+      // The endpoint now receives a JSON body
+      final response = await _dio.post(
+        '/duties/$dutyId/checkin',
+        data: {
+          'latitude': latitude,
+          'longitude': longitude,
+          'selfieUrl': selfieUrl, // Use the correct key 'selfieUrl'
+        },
+      );
 
-    if (response.statusCode != 200) {
-      throw Exception('Server returned an error during check-in.');
+      if (response.statusCode != 200) {
+        throw Exception('Server returned an error during check-in.');
+      }
+    } on DioException catch (e) {
+      final errorMsg = e.response?.data?['detail'] ?? 'An error occurred during check-in.';
+      throw Exception(errorMsg);
     }
-  } on DioException catch (e) {
-    final errorMsg = e.response?.data?['detail'] ?? 'An error occurred during check-in.';
-    throw Exception(errorMsg);
   }
-}
 
 
   

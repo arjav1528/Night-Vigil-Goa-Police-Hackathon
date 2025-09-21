@@ -1,4 +1,6 @@
 from datetime import datetime
+import requests 
+
 from typing import Optional, List
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -15,6 +17,8 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 db = Prisma()
+FACE_RECOG_SERVICE_URL = os.getenv("FACE_RECOG_SERVICE_URL")
+
 
 router = APIRouter(
     prefix="/users",
@@ -32,7 +36,7 @@ async def shutdown():
         await db.disconnect()
 
 
-@router.post("/register")
+@router.post("/register", response_model=UserOut)
 async def register(request: Request):
     try:
         if not db.is_connected():
@@ -73,47 +77,39 @@ async def register(request: Request):
             }
         )
 
-        print(f"Database result profileImage: {result.profileImage}")
+        print(FACE_RECOG_SERVICE_URL)
 
-        # Now process images and create embeddings if images exist
-        if user.profileImage:
+        if (result.id is not None) and FACE_RECOG_SERVICE_URL:
+            print(f"User created with ID: {result.id}, calling face recognition service.")
             try:
-                await process_user_images_and_create_embeddings(user.id, user.profileImage)
+                print(f"Calling face recognition service for user {user.empid}")
+                enroll_payload = {
+                    "user_id": result.id,
+                    "image_urls": user.profileImage
+                }
+                
+                face_response = requests.post(f"{FACE_RECOG_SERVICE_URL}/enroll", json=enroll_payload)
+                if face_response.status_code != 200:
+                    return JSONResponse(status_code=face_response.status_code, content={"detail": f"Face recognition service error: {face_response.text}"})
+                
+                
+                print(f"Face recognition service response: {str(face_response.json())}")
+                face_response = face_response.json()
+                
+                print(f"Face recognition successful for user {user.empid}")
+                return JSONResponse(status_code=201, content={"detail": "User registered successfully"})
+                
             except Exception as e:
-                print(f"Error creating embeddings: {str(e)}")
+                return JSONResponse(status_code=500, content={"detail": f"Error calling face recognition service: {str(e)}"})
 
-        result_dict = result.dict()
-        for key, value in result_dict.items():
-            if hasattr(value, "isoformat"):
-                result_dict[key] = value.isoformat()
 
-        return JSONResponse(status_code=201, content=result_dict)
+        
 
     except Exception as e:
         print(f"Error during registration: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": f"Internal server error: {str(e)}"})
 
-async def process_user_images_and_create_embeddings(user_id: str, image_paths: List[str]):
-    """
-    Process user images and create face embeddings
-    """
-    for image_path in image_paths:
-        try:
-            # TODO: Call your ML model here to get embeddings
-            # embedding = await get_face_embedding_from_ml_model(image_path)
-            embedding = [0.1, 0.2, 0.3]  # Placeholder - replace with actual ML model call
-            
-            # Store embedding in database
-            await db.faceembedding.create(
-                data={
-                    "userId": user_id,
-                    "embedding": embedding,
-                }
-            )
-        except Exception as e:
-            print(f"Error processing image {image_path}: {str(e)}")
-            # Continue processing other images
-            continue
+
 
 @router.post("/login")
 async def login(request: Request):
