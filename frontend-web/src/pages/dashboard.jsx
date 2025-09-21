@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { FaUserCircle } from "react-icons/fa"; // Using react-icons for a cleaner look
+import { IoIosLogOut } from "react-icons/io";
+import { IoLocationSharp } from "react-icons/io5";
 
 export const Dashboard = ({ onLogout }) => {
   const [officers, setOfficers] = useState([]);
@@ -10,7 +13,7 @@ export const Dashboard = ({ onLogout }) => {
   );
 
   useEffect(() => {
-    const fetchOfficers = async () => {
+    const fetchDashboardData = async () => {
       setLoading(true);
       setError("");
       try {
@@ -19,76 +22,115 @@ export const Dashboard = ({ onLogout }) => {
           throw new Error("No access token found. Please log in.");
         }
 
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/duties/users/all`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true", // Added header to bypass ngrok warning page
-            },
-          }
-        );
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "true",
+        };
 
-        const contentType = response.headers.get("content-type");
-        if (
-          !response.ok ||
-          !contentType ||
-          !contentType.includes("application/json")
-        ) {
-          const text = await response.text();
-          try {
-            const errorData = JSON.parse(text);
-            throw new Error(errorData.detail || "Failed to fetch officers.");
-          } catch {
-            throw new Error(
-              "Failed to fetch officers. The server might be returning an error page instead of a JSON response."
-            );
-          }
-        }
+        const [officersResponse, dutiesResponse] = await Promise.all([
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/duties/users/all`, {
+            headers,
+          }),
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/duties`, { headers }),
+        ]);
 
-        const data = await response.json();
-        setOfficers(data);
+        const officersData = await handleResponse(officersResponse, "officers");
+        const dutiesData = await handleResponse(dutiesResponse, "duties");
+
+        // Create a map for quick duty lookup by officerId
+        const dutiesMap = {};
+        dutiesData.forEach((duty) => {
+          dutiesMap[duty.officerId] = duty;
+        });
+
+        // Merge officer and duty data
+        const mergedOfficers = officersData.map((officer) => ({
+          ...officer,
+          assignedDuty: dutiesMap[officer.id] || null,
+        }));
+
+        setOfficers(mergedOfficers);
       } catch (err) {
         setError(err.message);
-        console.error("Error fetching officers: ", err);
+        console.error("Error fetching dashboard data: ", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOfficers();
+    const handleResponse = async (response, dataType) => {
+      const contentType = response.headers.get("content-type");
+      if (
+        !response.ok ||
+        !contentType ||
+        !contentType.includes("application/json")
+      ) {
+        const text = await response.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.detail || `Failed to fetch ${dataType}.`);
+        } catch {
+          throw new Error(
+            `Failed to fetch ${dataType}. The server might be returning an error page.`
+          );
+        }
+      }
+      return response.json();
+    };
+
+    fetchDashboardData();
   }, []);
 
   return (
     <div className="flex h-screen bg-background text-on-background">
       {/* Sidebar - Officer List */}
-      <div className="w-1/2 border-r border-gray-200 overflow-y-auto">
-        <div className="p-4 flex justify-between items-center bg-primary text-on-primary">
+      <div className="w-1/3 border-r border-gray-200 overflow-y-auto shadow-md">
+        <div className="p-4 flex justify-between items-center bg-primary text-on-primary shadow-lg sticky top-0 z-10">
           <h1 className="text-title-lg font-bold">Officers</h1>
           <button
             onClick={onLogout}
-            className="px-3 py-1 bg-secondary text-on-secondary rounded-md text-label-lg"
+            className="flex items-center gap-2 px-3 py-1 bg-secondary text-on-secondary rounded-md text-label-lg hover:bg-opacity-80 transition-colors"
           >
+            <IoIosLogOut />
             Logout
           </button>
         </div>
         {loading && <p className="p-4 text-center">Loading officers...</p>}
         {error && <p className="p-4 text-error text-center">{error}</p>}
         {!loading && !error && (
-          <ul className="divide-y divide-gray-200">
+          <ul className="p-4 space-y-4">
             {officers.map((officer) => (
               <li
                 key={officer.id}
-                className="p-4 hover:bg-gray-100 cursor-pointer"
+                className="bg-surface rounded-lg shadow-sm p-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center gap-4"
               >
-                <div className="font-semibold text-on-surface">
-                  Employee ID: {officer.empid}
+                <FaUserCircle size={40} className="text-primary" />
+                <div className="flex-1">
+                  <div className="font-semibold text-on-surface">
+                    Employee ID: {officer.empid}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Role: {officer.role}
+                  </div>
+                  {officer.assignedDuty && (
+                    <div className="text-sm text-gray-500 mt-1 flex items-center">
+                      <IoLocationSharp className="text-red-500 mr-1" />
+                      Duty assigned at:{" "}
+                      <span className="font-semibold ml-1">
+                        {officer.assignedDuty.location}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-gray-500">
-                  Role: {officer.role}
-                </div>
-                <button className="mt-2 px-3 py-1 text-sm text-primary border border-primary rounded-md">
-                  Assign Duty
+                <button
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    officer.assignedDuty
+                      ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                      : "text-primary border border-primary hover:bg-primary hover:text-on-primary"
+                  }`}
+                  disabled={!!officer.assignedDuty}
+                >
+                  {officer.assignedDuty ? "Assigned" : "Assign Duty"}
                 </button>
               </li>
             ))}
@@ -97,8 +139,8 @@ export const Dashboard = ({ onLogout }) => {
       </div>
 
       {/* Main Content - Map Embed */}
-      <div className="w-1/2 flex-1">
-        <div className="p-4 bg-primary text-on-primary">
+      <div className="w-2/3 flex-1 flex flex-col">
+        <div className="p-4 bg-primary text-on-primary shadow-lg sticky top-0 z-10 h-16">
           <h1 className="text-title-lg font-bold">Live Map</h1>
         </div>
         <div className="flex-1 h-full overflow-hidden">
