@@ -61,6 +61,9 @@ model DutyLog {
   faceVerified    Boolean   @default(false)
   locationVerified Boolean  @default(false)
   remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+
 
   // Relations
   duty    DutyAssignment @relation(fields: [dutyId], references: [id])

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List, Optional
 from datetime import datetime
 from fastapi.responses import JSONResponse
@@ -126,7 +126,9 @@ async def duty_check_in(
             "selfiePath": check_in_data.selfieUrl,
             "locationVerified": location_verified,
             "faceVerified": face_verified,
-            "remarks": check_in_data.remarks
+            "remarks": check_in_data.remarks,
+            "createdAt": datetime.now().isoformat(),
+            "updatedAt": datetime.now().isoformat()
         }
         
         await db.dutylog.create(data=duty_log_data)
@@ -207,7 +209,8 @@ async def location_update(
                 'officerId': current_user.id,
                 'locationVerified': request.location_verified,
                 'remarks': f"Officer started duty outside of designated radius at ({request.latitude}, {request.longitude}).",
-                'updatedAt': datetime.now().isoformat()
+                'updatedAt': datetime.now().isoformat(),
+                'createdAt': datetime.now().isoformat()
             })
             return {"status": "initial_out_of_radius_log_created"}
 
@@ -231,20 +234,37 @@ async def location_update(
     
 
 @router.get("/location-update/{id}")
-async def get_location_updates(request: requests.Request, id: str):
+async def get_location_updates(request: Request, id: str, admin: User = Depends(get_current_admin_user)):
     try:
+
+        if not db.is_connected():
+            await db.connect()
         location_update = await db.dutylog.find_first(
             where={"officerId": id},
-            order={"updatedAt": "desc"} 
+            order={"checkinTime": "desc"},
         )
 
+        print(str(location_update))
+        location_log = DutyLog(
+            id=location_update.id,
+            dutyId=location_update.dutyId,
+            officerId=location_update.officerId,
+            checkinTime=location_update.checkinTime,
+            selfiePath=location_update.selfiePath,
+            faceVerified=location_update.faceVerified,
+            locationVerified=location_update.locationVerified,
+            remarks=location_update.remarks,
+            createdAt=location_update.createdAt,
+            updatedAt=location_update.updatedAt
+        )
 
-        if not location_update:
-            return JSONResponse(status_code=404, content={"detail": "No location updates found for this officer."})
+        # Fix: Create DutyLog objects properly by mapping database fields to constructor parameters
         
 
+        if not location_log:
+            return JSONResponse(status_code=404, content={"detail": "No location updates found for this officer."})
 
-        return JSONResponse(status_code=200, content=location_update)
+        return JSONResponse(status_code=200, content=location_log.to_dict())
     except Exception as e:
         print(f"Error fetching location updates: {e}")
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})

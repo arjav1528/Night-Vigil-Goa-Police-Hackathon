@@ -162,6 +162,7 @@ class DutyAssignment:
 class DutyLog:
     def __init__(
         self,
+        id: str,
         dutyId: str,
         officerId: str,
         checkinTime: Optional[datetime] = None,
@@ -169,10 +170,12 @@ class DutyLog:
         faceVerified: bool = False,
         locationVerified: bool = False,
         remarks: Optional[str] = None,
+        createdAt: Optional[datetime] = None,  # Add this parameter
+        updatedAt: Optional[datetime] = None,  # Add this parameter
         duty: Optional[DutyAssignment] = None,
         officer: Optional[User] = None,
     ):
-        self.id = generate_id()
+        self.id = id or generate_id()
         self.dutyId = dutyId
         self.officerId = officerId
         self.checkinTime = checkinTime or datetime.now()
@@ -182,6 +185,8 @@ class DutyLog:
         self.remarks = remarks
         self.duty = duty
         self.officer = officer
+        self.createdAt = createdAt or datetime.now()  # Use provided or default
+        self.updatedAt = updatedAt or datetime.now()  # Use provided or default
 
 
     def to_dict(self):        
@@ -194,6 +199,8 @@ class DutyLog:
             "faceVerified": self.faceVerified,
             "locationVerified": self.locationVerified,
             "remarks": self.remarks,
+            "createdAt": self.createdAt.isoformat() if self.createdAt else None,
+            "updatedAt": self.updatedAt.isoformat() if self.updatedAt else None,
         }
 
 
