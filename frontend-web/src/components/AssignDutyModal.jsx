@@ -59,7 +59,7 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/55 flex items-center justify-center p-4">
       <div className="bg-surface p-6 rounded-lg shadow-xl w-full max-w-lg relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 cursor-pointer">
           <IoCloseSharp size={24} />
         </button>
         <h2 className="text-title-lg font-bold text-primary mb-4">Assign Duty to {officer.empid}</h2>
@@ -113,12 +113,12 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
           {error && <p className="text-sm text-error text-center">{error}</p>}
           <div className="flex justify-end gap-2 mt-6">
             <button type="button" onClick={onClose} 
-              className="px-4 py-2 border border-gray-300 rounded-md text-on-surface hover:bg-gray-100 transition-colors"
+              className="px-4 py-2 border border-gray-300 rounded-md text-on-surface hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className={`px-4 py-2 rounded-md font-bold text-on-primary transition-colors ${loading ? 'bg-gray-400' : 'bg-primary hover:bg-opacity-80'}`}
+              className={`px-4 py-2 rounded-md font-bold text-on-primary transition-colors ${loading ? 'bg-gray-400' : 'bg-primary hover:bg-opacity-80 cursor-pointer'}`}
             >
               {loading ? 'Assigning...' : 'Assign Duty'}
             </button>

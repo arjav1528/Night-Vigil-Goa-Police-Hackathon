@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { FaUserCircle } from "react-icons/fa"; // Using react-icons for a cleaner look
+import { useState, useEffect } from "react";
+import { FaUserCircle } from "react-icons/fa";
 import { IoIosLogOut } from "react-icons/io";
 import { IoLocationSharp } from "react-icons/io5";
 import { AssignDutyModal } from "../components/AssignDutyModal";
+import { MapComponent } from "../components/MapComponent";
 
 export const Dashboard = ({ onLogout }) => {
   const [officers, setOfficers] = useState([]);
@@ -10,9 +11,6 @@ export const Dashboard = ({ onLogout }) => {
   const [error, setError] = useState("");
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState(null);
-
-  const mapIframeSrc =
-    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d492479.1875141335!2d74.00641279999999!3d15.349728500000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bbfba106336b741%3A0xeaf887ff62f34092!2sGoa!5e0!3m2!1sen!2sin!4v1758437603365!5m2!1sen!2sin";
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -92,7 +90,6 @@ export const Dashboard = ({ onLogout }) => {
   };
 
   const handleDutyAssigned = () => {
-    // Re-fetch all data to show the updated assignment status
     fetchDashboardData();
   };
 
@@ -122,7 +119,7 @@ export const Dashboard = ({ onLogout }) => {
                 <FaUserCircle size={40} className="text-primary" />
                 <div className="flex-1">
                   <div className="font-semibold text-on-surface">
-                    Employee ID: {officer.empid}
+                    Officer ID: {officer.empid}
                   </div>
                   <div className="text-sm text-gray-500">
                     Role: {officer.role}
@@ -160,15 +157,7 @@ export const Dashboard = ({ onLogout }) => {
           <h1 className="text-title-lg font-bold">Live Map</h1>
         </div>
         <div className="flex-1 h-full overflow-hidden">
-          <iframe
-            src={mapIframeSrc}
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          <MapComponent officersWithDuties={officers} />
         </div>
       </div>
       {showAssignModal && selectedOfficer && (
