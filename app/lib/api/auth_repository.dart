@@ -45,7 +45,8 @@ class AuthRepository {
 
   Future<String> login(String empid, String password) async {
     try {
-      print("Calling login API"); 
+      print("Calling login API");
+      print(dotenv.env['BACKEND_URL']); 
       final response = await _dio.post(
         '/users/login',
         data: {'empid': empid, 'password': password},
@@ -73,6 +74,7 @@ class AuthRepository {
     required List<String> profileImages,
   }) async {
     try {
+      print("Calling registration API");
       final response = await _dio.post('/users/register', data: {
         'empid': empid,
         'password': password,

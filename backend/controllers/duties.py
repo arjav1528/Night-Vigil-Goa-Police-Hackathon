@@ -127,8 +127,6 @@ async def duty_check_in(
             "locationVerified": location_verified,
             "faceVerified": face_verified,
             "remarks": check_in_data.remarks,
-            "createdAt": datetime.now().isoformat(),
-            "updatedAt": datetime.now().isoformat()
         }
         
         await db.dutylog.create(data=duty_log_data)
