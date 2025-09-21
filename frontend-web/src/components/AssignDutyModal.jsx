@@ -17,11 +17,10 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
     setLoading(true);
     setError("");
 
-    // The backend expects UTC format, but we get local IST from the form.
-    // By not appending 'Z' and just using a standard ISO string, the backend
-    // will correctly parse it as local time.
-    const startDateTimeLocal = `${date}T${startTime}:00`;
-    const endDateTimeLocal = `${date}T${endTime}:00`;
+    const formattedStartTime = new Date(
+      `${date}T${startTime}:00Z`
+    ).toISOString();
+    const formattedEndTime = new Date(`${date}T${endTime}:00Z`).toISOString();
 
     const payload = {
       officerId: officer.id,
@@ -29,8 +28,8 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radius: parseFloat(radius),
-      startTime: startDateTimeLocal,
-      endTime: endDateTimeLocal,
+      startTime: formattedStartTime,
+      endTime: formattedEndTime,
     };
 
     try {
