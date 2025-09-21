@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:night_vigil/main.dart';
@@ -91,6 +92,8 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    final service = FlutterBackgroundService();
+    service.invoke('stopService');
     await _secureStorage.deleteAll();
   }
 

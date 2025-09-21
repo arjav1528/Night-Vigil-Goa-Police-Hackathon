@@ -9,6 +9,16 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs access to your location to verify your position during duty check-in.</string>
 	<key>CFBundleDisplayName</key>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>location</string>
+		<string>processing</string>
+	</array>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs your location to track duty progress in the background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs your location to track duty progress.</string>
 	<string>Night Vigil</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>

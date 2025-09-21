@@ -8,13 +8,19 @@ import 'package:night_vigil/api/duty_repository.dart';
 import 'package:night_vigil/bloc/auth_bloc.dart';
 import 'package:night_vigil/firebase_options.dart';
 import 'package:night_vigil/router.dart';
+import 'package:night_vigil/services/background_service.dart';
+import 'package:night_vigil/services/notification_service.dart';
 import 'package:night_vigil/theme.dart';
 
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final notificationService = NotificationService();
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await notificationService.initialize();
+  await initializeBackgroundService();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
 );
