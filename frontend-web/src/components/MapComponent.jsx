@@ -3,8 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// A simple function to get a color based on a hash of the officer's ID
-const getMarkerColor = (officerId) => {
+export const getMarkerColor = (officerId) => {
   const colors = [
     "#FF5733", // Vibrant Red-Orange
     "#FFB900", // Vivid Yellow
@@ -42,9 +41,9 @@ const createCustomIcon = (color) => {
   </svg>`;
   return new L.DivIcon({
     html: svg,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
     className: "leaflet-custom-marker",
   });
 };

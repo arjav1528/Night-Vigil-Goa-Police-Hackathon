@@ -3,7 +3,7 @@ import { FaUserCircle } from "react-icons/fa";
 import { IoIosLogOut } from "react-icons/io";
 import { IoLocationSharp } from "react-icons/io5";
 import { AssignDutyModal } from "../components/AssignDutyModal";
-import { MapComponent } from "../components/MapComponent";
+import { MapComponent, getMarkerColor } from "../components/MapComponent"; // Import the getMarkerColor function
 
 export const Dashboard = ({ onLogout }) => {
   const [officers, setOfficers] = useState([]);
@@ -126,7 +126,10 @@ export const Dashboard = ({ onLogout }) => {
                   </div>
                   {officer.assignedDuty && (
                     <div className="text-sm text-gray-500 mt-1 flex items-center">
-                      <IoLocationSharp className="text-red-500 mr-1" />
+                      <IoLocationSharp
+                        className="w-4 h-4 mr-1"
+                        style={{ color: getMarkerColor(officer.id) }}
+                      />
                       Duty assigned at:{" "}
                       <span className="font-semibold ml-1">
                         {officer.assignedDuty.location}
