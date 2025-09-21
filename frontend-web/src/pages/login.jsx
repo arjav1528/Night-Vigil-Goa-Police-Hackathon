@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Emblem from "../assets/Emblem_of_Goa_Police.png";
+import Emblem from "../assets/Emblem.png";
 
 export const Login = ({ onLogin }) => {
   const [empid, setEmpid] = useState("");

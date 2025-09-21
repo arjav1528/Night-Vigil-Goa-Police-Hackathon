@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// Export this function so it can be used in the Dashboard component
 export const getMarkerColor = (officerId) => {
   const colors = [
     "#FF5733", // Vibrant Red-Orange
@@ -50,10 +51,10 @@ const createCustomIcon = (color) => {
 
 export const MapComponent = ({ officersWithDuties }) => {
   const markers = officersWithDuties.filter((o) => o.assignedDuty);
-  const center =
-    markers.length > 0
-      ? [markers[0].assignedDuty.latitude, markers[0].assignedDuty.longitude]
-      : [15.2993, 74.124];
+
+  // Set the map center to the approximate center of Goa.
+  // The coordinates are roughly 15.3000° N, 74.0000° E.
+  const center = [15.3, 74.0];
 
   return (
     <MapContainer

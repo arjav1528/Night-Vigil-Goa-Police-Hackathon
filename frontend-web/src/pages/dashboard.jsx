@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { FaUserCircle } from "react-icons/fa";
 import { IoIosLogOut } from "react-icons/io";
-import { IoLocationSharp } from "react-icons/io5";
+import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { AssignDutyModal } from "../components/AssignDutyModal";
-import { MapComponent, getMarkerColor } from "../components/MapComponent"; // Import the getMarkerColor function
+import { MapComponent, getMarkerColor } from "../components/MapComponent";
 
 export const Dashboard = ({ onLogout }) => {
   const [officers, setOfficers] = useState([]);
@@ -41,10 +41,38 @@ export const Dashboard = ({ onLogout }) => {
         dutiesMap[duty.officerId] = duty;
       });
 
-      const mergedOfficers = officersData.map((officer) => ({
-        ...officer,
-        assignedDuty: dutiesMap[officer.id] || null,
-      }));
+      const mergedOfficers = await Promise.all(
+        officersData.map(async (officer) => {
+          const assignedDuty = dutiesMap[officer.id] || null;
+          let verificationData = null;
+
+          if (assignedDuty) {
+            try {
+              const verificationResponse = await fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/duties/location-update/${
+                  assignedDuty.officerId
+                }`,
+                { headers }
+              );
+              verificationData = await handleResponse(
+                verificationResponse,
+                "location-update"
+              );
+            } catch (verifError) {
+              console.error(
+                `Failed to fetch verification data for officer ${officer.empid}:`,
+                verifError
+              );
+            }
+          }
+
+          return {
+            ...officer,
+            assignedDuty,
+            verificationData,
+          };
+        })
+      );
 
       setOfficers(mergedOfficers);
     } catch (err) {
@@ -125,16 +153,59 @@ export const Dashboard = ({ onLogout }) => {
                     Role: {officer.role}
                   </div>
                   {officer.assignedDuty && (
-                    <div className="text-sm text-gray-500 mt-1 flex items-center">
-                      <IoLocationSharp
-                        className="w-4 h-4 mr-1"
-                        style={{ color: getMarkerColor(officer.id) }}
-                      />
-                      Duty assigned at:{" "}
-                      <span className="font-semibold ml-1">
-                        {officer.assignedDuty.location}
-                      </span>
-                    </div>
+                    <>
+                      <div className="text-sm text-gray-500 mt-1 flex items-center">
+                        <span
+                          className="w-3 h-3 rounded-full mr-2"
+                          style={{
+                            backgroundColor: getMarkerColor(officer.id),
+                          }}
+                        ></span>
+                        Duty at:{" "}
+                        <span className="font-semibold ml-1">
+                          {officer.assignedDuty.location}
+                        </span>
+                      </div>
+                      {/* New section for duty start and end times */}
+                      <div className="text-xs text-gray-800 mt-1 flex items-center">
+                        <span className="font-semibold mr-1">Time:</span>
+                        <span>
+                          {new Intl.DateTimeFormat("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).format(new Date(officer.assignedDuty.startTime))}
+                          {" - "}
+                          {new Intl.DateTimeFormat("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).format(new Date(officer.assignedDuty.endTime))}
+                        </span>
+                      </div>
+                      {officer.verificationData && (
+                        <div className="text-sm text-gray-500 mt-1 flex items-center gap-4">
+                          <div className="flex items-center">
+                            {officer.verificationData.faceVerified ? (
+                              <FaCheckCircle className="text-green-500 mr-1" />
+                            ) : (
+                              <FaTimesCircle className="text-red-500 mr-1" />
+                            )}
+                            <span className="text-on-surface">
+                              Face Verified
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            {officer.verificationData.locationVerified ? (
+                              <FaCheckCircle className="text-green-500 mr-1" />
+                            ) : (
+                              <FaTimesCircle className="text-red-500 mr-1" />
+                            )}
+                            <span className="text-on-surface">
+                              Location Verified
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 <button
