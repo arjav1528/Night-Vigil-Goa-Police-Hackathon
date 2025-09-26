@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from enum import Enum
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 import jwt
 
@@ -51,7 +51,7 @@ class User:
         self.passwordHash = passwordHash
         self.role = Role(role) if isinstance(role, str) else role  
         self.profileImage = profileImage if profileImage is not None else []  # Fix the assignment
-        self.createdAt = createdAt or datetime.now()
+        self.createdAt = createdAt or datetime.now(timezone.utc)
         self.updatedAt = updatedAt
         self.dutyAssignments = dutyAssignments or []
         self.assignedDuties = assignedDuties or []
@@ -73,7 +73,7 @@ class User:
         payload = {
             "empid": self.empid,
             "role": self.role.value,
-            "exp": datetime.utcnow() + timedelta(days=expiration_days)
+            "exp": datetime.now(timezone.utc) + timedelta(days=expiration_days)
         }
         token = jwt.encode(payload, secret_key, algorithm="HS256")
         return token
@@ -101,7 +101,7 @@ class FaceEmbedding:
         self.id = generate_id()
         self.userId = userId
         self.embedding = embedding
-        self.createdAt = createdAt or datetime.now()
+        self.createdAt = createdAt or datetime.now(timezone.utc)
         self.user = user
 
     def to_dict(self):
@@ -178,15 +178,15 @@ class DutyLog:
         self.id = id or generate_id()
         self.dutyId = dutyId
         self.officerId = officerId
-        self.checkinTime = checkinTime or datetime.now()
+        self.checkinTime = checkinTime or datetime.now(timezone.utc)
         self.selfiePath = selfiePath
         self.faceVerified = faceVerified
         self.locationVerified = locationVerified
         self.remarks = remarks
         self.duty = duty
         self.officer = officer
-        self.createdAt = createdAt or datetime.now()  # Use provided or default
-        self.updatedAt = updatedAt or datetime.now()  # Use provided or default
+        self.createdAt = createdAt or datetime.now(timezone.utc)  # Use provided or default
+        self.updatedAt = updatedAt or datetime.now(timezone.utc)  # Use provided or default
 
 
     def to_dict(self):        
@@ -218,7 +218,7 @@ class Notification:
         self.userId = userId
         self.message = message
         self.type = type
-        self.createdAt = createdAt or datetime.now()
+        self.createdAt = createdAt or datetime.now(timezone.utc)
         self.read = read
         self.user = user
 
