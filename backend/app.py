@@ -98,7 +98,8 @@ async def index():
     return {
         "message": "Welcome to the Night Vigil Backend!",
         "version": "1.0.0",
-        "status": "operational"
+        "status": "operational",
+        "timestamp": time()
     }
 
 @app.get("/health")
