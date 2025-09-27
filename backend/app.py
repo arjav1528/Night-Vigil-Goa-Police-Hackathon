@@ -7,6 +7,12 @@ from prisma import Prisma
 from controllers import auth
 from controllers import duties
 import logging
+import subprocess
+
+subprocess.run(["prisma", "generate"], check=True)
+
+
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -243,6 +249,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 if __name__ == "__main__":
+    
     import uvicorn
     uvicorn.run(
         "app:app", 
