@@ -38,7 +38,7 @@ class DutyRepository {
     try {
       final response = await _dio.get('/duties/my-duties');
       if (response.statusCode == 200) {
-        final List<dynamic> dutyJson = response.data;
+        final List<dynamic> dutyJson = response.data['duties'];
         return dutyJson.map((json) => DutyAssignment.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load duties');

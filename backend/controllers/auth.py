@@ -4,7 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from prisma import Prisma
-from models.model import User
+from models.model import Role, User
 from dotenv import load_dotenv
 import os
 from enum import Enum
@@ -303,13 +303,13 @@ async def admin_register(request: Request):
             )
         
         # Create admin user
-        new_admin = User(empid=empid, role="ADMIN")
+        new_admin = User(empid=empid, role=Role.ADMIN)
         new_admin.set_password(password)
         
         await db.user.create(data={
             "id": new_admin.id,
             "empid": new_admin.empid,
-            "role": new_admin.role,
+            "role": new_admin.role.value if isinstance(new_admin.role, Enum) else new_admin.role,
             "passwordHash": new_admin.passwordHash,
             "createdAt": new_admin.createdAt,
             "updatedAt": new_admin.updatedAt,

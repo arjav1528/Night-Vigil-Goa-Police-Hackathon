@@ -165,13 +165,34 @@ async def get_my_duties(current_user: User = Depends(get_current_user)):
         
         duties = await db.dutyassignment.find_many(
             where={"officerId": current_user.id},
-            include={"logs": {"select": {"checkinTime": True, "locationVerified": True, "faceVerified": True}}},
             order={"startTime": "desc"}
         )
+
+        Duties = []
+        for duty_data in duties:
+            try:
+                duty = DutyAssignment(
+                    officerId=duty_data.officerId,
+                    assignedBy=duty_data.assignedBy,
+                    location=duty_data.location,
+                    latitude=duty_data.latitude,
+                    longitude=duty_data.longitude,
+                    radius=duty_data.radius,
+                    startTime=duty_data.startTime,
+                    endTime=duty_data.endTime,
+                    status=DutyStatus(duty_data.status) if isinstance(duty_data.status, str) else duty_data.status,
+                    officer=current_user
+                )
+                Duties.append(duty)
+            except Exception as duty_error:
+                print(f"Error processing duty {duty_data.id}: {duty_error}")
+                continue
+
+        
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"duties": duties, "count": len(duties)}
+            content={"duties": [duty.to_dict() for duty in Duties], "count": len(Duties)}
         )
         
     except HTTPException:
