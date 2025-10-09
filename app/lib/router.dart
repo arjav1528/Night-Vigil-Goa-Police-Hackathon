@@ -22,11 +22,12 @@ class AppRouter {
         path: '/duty/:dutyId',
         builder: (context, state) {
           final duty = state.extra as DutyAssignment?;
+          debugPrint("Duty object: ${duty?.id}");
           if (duty != null) {
             return CheckInScreen(duty: duty);
           }
           // Fallback if duty object is missing
-          return const Scaffold(body: Center(child: Text('Error: Duty not found.')));
+          return const Scaffold(body: Center(child: Text('Error: Duty was not found.')));
         },
       ),
     ],

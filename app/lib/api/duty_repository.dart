@@ -1,5 +1,6 @@
 import 'package:app/models/duty_assignment_model.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -56,14 +57,22 @@ class DutyRepository {
     required String selfieUrl,
   }) async {
     try {
+      final requestData = {
+        'latitude': latitude,
+        'longitude': longitude,
+        'selfieUrl': selfieUrl,
+      };
+      
+      // DEBUG: Print what we're sending
+      debugPrint('DEBUG: Sending check-in data: $requestData');
+      debugPrint('DEBUG: Duty ID: $dutyId');
+      
       final response = await _dio.post(
         '/duties/$dutyId/checkin',
-        data: {
-          'latitude': latitude,
-          'longitude': longitude,
-          'selfieUrl': selfieUrl,
-        },
+        data: requestData,
       );
+
+      debugPrint('Check-in response: ${response.data}');
       if (response.statusCode != 200) {
         throw Exception('Server returned an error during check-in.');
       }

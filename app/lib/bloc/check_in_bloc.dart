@@ -53,6 +53,9 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
     try {
       // Step 1: Get Current Location using Geolocator
       final position = await locationService.getCurrentLocation();
+      
+      // DEBUG: Print current location
+      print('DEBUG: Current location - Lat: ${position.latitude}, Long: ${position.longitude}');
 
       // Step 2: Upload Selfie to Firebase Storage
       final selfieUrl = await storageService.uploadImage(

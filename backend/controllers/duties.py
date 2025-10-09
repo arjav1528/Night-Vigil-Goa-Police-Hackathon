@@ -198,6 +198,7 @@ async def get_my_duties(current_user: User = Depends(get_current_user)):
         for duty_data in duties:
             try:
                 duty = DutyAssignment(
+                    id=duty_data.id,
                     officerId=duty_data.officerId,
                     assignedBy=duty_data.assignedBy,
                     location=duty_data.location,

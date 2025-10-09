@@ -52,7 +52,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
           CheckInSubmitted(
             dutyId: widget.duty.id,
             selfieImage: _selfieImage!,
-            empid: 'current_user_empid',
+            empid: '',
           ),
         );
   }
@@ -66,13 +66,30 @@ class _CheckInScreenState extends State<CheckInScreen> {
         locationService: LocationService(),
       ),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Duty Check-in')),
+        appBar: AppBar(
+          title: const Text('Duty Check-in'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
+          ),
+        ),
+
         body: BlocConsumer<CheckInBloc, CheckInState>(
           listener: (context, state) {
             if (state is CheckInSuccess) {
               CustomSnackBar.show(context,
                   message: state.message, alertType: AlertType.success);
-              context.pop(); 
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
             }
             if (state is CheckInFailure) {
               CustomSnackBar.show(context,

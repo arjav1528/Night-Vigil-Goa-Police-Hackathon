@@ -71,18 +71,26 @@ class HomeScreen extends StatelessWidget {
                         trailing: Icon(Icons.arrow_forward_ios, size: 16.sp),
                         onTap: () {
                           final now = DateTime.now();
+                          
+                          // Debug information
+                          debugPrint('Current time: $now');
+                          debugPrint('Duty start time: ${duty.startTime}');
+                          debugPrint('Duty end time: ${duty.endTime}');
+                          debugPrint('Is after start: ${now.isAfter(duty.startTime)}');
+                          debugPrint('Is before end: ${now.isBefore(duty.endTime)}');
+                          
                           if (now.isAfter(duty.startTime) && now.isBefore(duty.endTime)) {
                             context.go('/duty/${duty.id}', extra: duty);
                           } else if (now.isBefore(duty.startTime)) {
                             CustomSnackBar.show(
                               context,
-                              message: 'This duty has not started yet.',
+                              message: 'This duty has not started yet. Start time: ${DateFormat('MMM d, hh:mm a').format(duty.startTime)}',
                               alertType: AlertType.warning,
                             );
                           } else {
                             CustomSnackBar.show(
                               context,
-                              message: 'This duty has already ended.',
+                              message: 'This duty has already ended. End time: ${DateFormat('MMM d, hh:mm a').format(duty.endTime)}',
                               alertType: AlertType.error,
                             );
                           }
