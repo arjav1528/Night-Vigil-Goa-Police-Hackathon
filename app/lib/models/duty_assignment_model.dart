@@ -26,8 +26,8 @@ class DutyAssignment {
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       radius: (json['radius'] as num).toDouble(),
-      startTime: DateTime.parse(json['startTime']),
-      endTime: DateTime.parse(json['endTime']),
+      startTime: DateTime.parse(json['startTime']).add(Duration(hours: 5, minutes: 30)), // Adjusting for IST
+      endTime: DateTime.parse(json['endTime']).add(Duration(hours: 5, minutes: 30)), // Adjusting for IST
       status: json['status'],
     );
   }

@@ -9,7 +9,7 @@ from controllers import duties
 import logging
 import subprocess
 
-subprocess.run(["prisma", "generate"], check=True)
+# subprocess.run(["prisma", "generate"], check=True)
 
 
 
@@ -255,7 +255,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app:app", 
         host="0.0.0.0", 
-        port=8080, 
+        port=8000, 
         reload=True,
         reload_dirs=["./"],
         reload_includes=["*.py"]
