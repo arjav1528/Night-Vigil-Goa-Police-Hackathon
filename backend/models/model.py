@@ -121,6 +121,7 @@ class DutyAssignment:
         location: str,
         latitude: float,
         longitude: float,
+        id: str = None, 
         radius: float = 100,
         startTime: datetime = None,
         endTime: datetime = None,
@@ -129,7 +130,7 @@ class DutyAssignment:
         admin: Optional[User] = None,
         logs: Optional[List["DutyLog"]] = None,
     ):
-        self.id = generate_id()
+        self.id = id or generate_id()  # Fixed: was self.id = self.id or generate_id()
         self.officerId = officerId
         self.assignedBy = assignedBy
         self.location = location
@@ -143,9 +144,8 @@ class DutyAssignment:
         self.admin = admin
         self.logs = logs or []
 
-
     def to_dict(self):
-        return {
+        result = {
             "id": self.id,
             "officerId": self.officerId,
             "assignedBy": self.assignedBy,
@@ -157,6 +157,18 @@ class DutyAssignment:
             "endTime": self.endTime.isoformat() if self.endTime else None,
             "status": self.status.value if isinstance(self.status, Enum) else self.status,
         }
+        
+        # Include officer information if available
+        if self.officer:
+            result["officer"] = {
+                "id": self.officer.id,
+                "empid": self.officer.empid,
+                "role": self.officer.role.value if isinstance(self.officer.role, Enum) else self.officer.role,
+                "profileImage": self.officer.profileImage,
+                "createdAt": self.officer.createdAt.isoformat() if self.officer.createdAt else None
+            }
+        
+        return result
 
 
 class DutyLog:

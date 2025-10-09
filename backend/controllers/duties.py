@@ -138,11 +138,14 @@ async def get_all_duties(admin: User = Depends(get_current_admin_user)):
             )
         
         duties = await db.dutyassignment.find_many()
+        # print(str(duties))
         duty_list = []
         for duty_data in duties:
+            print(str(duty_data))
             try:
                 officer = await db.user.find_unique(where={"id": duty_data.officerId})
                 duty = DutyAssignment(
+                    id=duty_data.id,
                     officerId=duty_data.officerId,
                     assignedBy=duty_data.assignedBy,
                     location=duty_data.location,
