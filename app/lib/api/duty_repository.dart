@@ -38,6 +38,7 @@ class DutyRepository {
   Future<List<DutyAssignment>> getMyDuties() async {
     try {
       final response = await _dio.get('/duties/my-duties');
+      // debugPrint('Response data: ${response.data}');
       if (response.statusCode == 200) {
         final List<dynamic> dutyJson = response.data['duties'];
         return dutyJson.map((json) => DutyAssignment.fromJson(json)).toList();

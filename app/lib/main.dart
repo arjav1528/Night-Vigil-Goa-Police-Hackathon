@@ -1,7 +1,9 @@
 import 'package:app/api/auth_repository.dart';
 import 'package:app/api/duty_repository.dart';
 import 'package:app/bloc/auth_bloc.dart';
+import 'package:app/bloc/geofencing_bloc.dart';
 import 'package:app/router.dart';
+import 'package:app/services/geofencing_service.dart';
 import 'package:app/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,16 +25,27 @@ void main() async {
 
   final authRepository = AuthRepository();
   final dutyRepository = DutyRepository();
+  final geofencingService = GeofencingService();
+  
+  // Initialize geofencing service
+  await geofencingService.initialize();
+  
   final authBloc = AuthBloc(authRepository: authRepository)..add(AppStarted());
+  final geofencingBloc = GeofencingBloc(geofencingService: geofencingService)
+      ..add(InitializeGeofencing());
 
   runApp(
     MultiRepositoryProvider(
       providers: [
         RepositoryProvider.value(value: authRepository),
         RepositoryProvider.value(value: dutyRepository),
+        RepositoryProvider.value(value: geofencingService),
       ],
-      child: BlocProvider.value(
-        value: authBloc,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: authBloc),
+          BlocProvider.value(value: geofencingBloc),
+        ],
         child: MyApp(authBloc: authBloc),
       ),
     ),

@@ -5,6 +5,7 @@ import 'package:app/screens/auth/auth_screen.dart';
 import 'package:app/screens/check_in_screen.dart';
 import 'package:app/screens/home_screen.dart';
 import 'package:app/screens/splash_screen.dart';
+import 'package:app/widgets/geofencing_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -28,6 +29,13 @@ class AppRouter {
           }
           // Fallback if duty object is missing
           return const Scaffold(body: Center(child: Text('Error: Duty was not found.')));
+        },
+      ),
+      GoRoute(
+        path: '/geofencing',
+        builder: (context, state) {
+          // For now, pass empty list. This will be updated when duties are loaded
+          return const GeofencingScreen(duties: []);
         },
       ),
     ],

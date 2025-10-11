@@ -11,6 +11,7 @@ import 'package:app/api/firebase_storage_service.dart';
 import 'package:app/bloc/check_in_bloc.dart';
 import 'package:app/models/duty_assignment_model.dart';
 import 'package:app/services/location_service.dart';
+import 'package:app/services/geofencing_service.dart';
 import 'package:app/utils/custom_snackbar.dart';
 
 
@@ -53,6 +54,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
             dutyId: widget.duty.id,
             selfieImage: _selfieImage!,
             empid: '',
+            duty: widget.duty, // Pass the duty assignment for geofencing
           ),
         );
   }
@@ -64,6 +66,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         dutyRepository: RepositoryProvider.of<DutyRepository>(context),
         storageService: FirebaseStorageService(),
         locationService: LocationService(),
+        geofencingService: GeofencingService(), // Add geofencing service
       ),
       child: Scaffold(
         appBar: AppBar(
