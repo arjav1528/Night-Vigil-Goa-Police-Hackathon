@@ -638,3 +638,51 @@ async def get_location_updates(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch location updates: {str(e)}"
         )
+
+
+@router.delete('/{duty_id}')
+async def delete_duty(
+    duty_id: str,
+    admin: User = Depends(get_current_admin_user)
+):
+    try:
+        await ensure_db_connection()
+        
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin authentication required"
+            )
+        
+        if not duty_id or duty_id.strip() == "":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="duty_id is required"
+            )
+        
+        # Verify duty exists
+        duty = await db.dutyassignment.find_unique(where={"id": duty_id})
+        if not duty:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Duty not found"
+            )
+        
+        # Delete associated logs first due to foreign key constraints
+        await db.dutylog.delete_many(where={"dutyId": duty_id})
+        
+        # Delete the duty
+        await db.dutyassignment.delete(where={"id": duty_id})
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"detail": "Duty and associated logs deleted successfully"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete duty: {str(e)}"
+        )
