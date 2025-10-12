@@ -3,6 +3,7 @@ import 'package:app/bloc/auth_bloc.dart';
 import 'package:app/bloc/duty_bloc.dart';
 import 'package:app/bloc/geofencing_bloc.dart';
 import 'package:app/utils/custom_snackbar.dart';
+import 'package:app/widgets/geofencing_widget.dart';
 import 'package:app/widgets/loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -66,8 +67,46 @@ class HomeScreen extends StatelessWidget {
               }
 
               if (state.duties.isEmpty) {
-                return Center(
-                  child: Text('No duties assigned for today.', style: Theme.of(context).textTheme.bodyMedium),
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    context.read<DutyBloc>().add(FetchDuties());
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Container(
+                      height: MediaQuery.of(context).size.height - 
+                             AppBar().preferredSize.height - 
+                             MediaQuery.of(context).padding.top,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.assignment_outlined,
+                              size: 64.sp,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'No duties assigned for today.',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              'Pull down to refresh',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 );
               }
 
@@ -81,7 +120,7 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Geofencing widget
-                      // GeofencingWidget(duties: state.duties),
+                      GeofencingWidget(duties: state.duties),
                       
                       // Duties list
                       // Padding(
@@ -183,15 +222,55 @@ class HomeScreen extends StatelessWidget {
             }
 
             if (state is DutyLoadFailure) {
-              return Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.w),
-                  child: Text(
-                    'Failed to load duties: ${state.error}',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
+              return RefreshIndicator(
+                onRefresh: () async {
+                  context.read<DutyBloc>().add(FetchDuties());
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    height: MediaQuery.of(context).size.height - 
+                           AppBar().preferredSize.height - 
+                           MediaQuery.of(context).padding.top,
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.w),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64.sp,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Failed to load duties',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              state.error,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Pull down to refresh',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
                   ),
                 ),
               );
