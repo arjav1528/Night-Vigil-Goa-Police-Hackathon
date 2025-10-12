@@ -66,6 +66,8 @@ The backend exposes a series of RESTful API endpoints for the web and mobile app
 * `GET /duties/my-duties`: (Officer only) Retrieves all duties assigned to the current officer.
 * `POST /duties/{duty_id}/checkin`: The primary endpoint for officers to check in. It triggers both location verification and facial recognition.
 * `POST /duties/location-update`: Receives real-time location updates from the mobile app's background service. If a geofence breach is detected, it logs an alert.
+* `POST /duties/location-tracking`: (Officer only) Tracks officer location with entry/exit detection for duty areas.
+* `GET /duties/location-history/{duty_id}`: (Admin only) Retrieves detailed location history for a specific duty.
 * `GET /duties/location-update/{officer_id}`: (Admin only) Retrieves the location history for a specific officer.
 
 ***
