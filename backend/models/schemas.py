@@ -81,3 +81,21 @@ class LocationUpdateRequest(BaseModel):
         if not v or v.strip() == "":
             raise ValueError('dutyId cannot be empty')
         return v.strip()
+
+class LocationTrackingSchema(BaseModel):
+    dutyId: str
+    latitude: float
+    longitude: float
+    isInside: bool
+    timestamp: datetime
+    
+class LocationHistoryResponse(BaseModel):
+    id: str
+    dutyId: str
+    officerId: str
+    latitude: float
+    longitude: float
+    isInside: bool
+    distance: float
+    timestamp: datetime
+    remarks: Optional[str] = None

@@ -9,12 +9,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/duty_assignment_model.dart';
+import 'package:app/api/duty_repository.dart';
 
 class GeofencingService {
   static const String _dutiesKey = 'geofence_duties';
   static const String _lastLocationKey = 'last_location';
   
   late FlutterLocalNotificationsPlugin _notificationsPlugin;
+  late DutyRepository _dutyRepository;
   
   static final GeofencingService _instance = GeofencingService._internal();
   factory GeofencingService() => _instance;
@@ -24,6 +26,7 @@ class GeofencingService {
   Future<void> initialize() async {
     await _initializeNotifications();
     await _initializeBackgroundService();
+    _dutyRepository = DutyRepository(); // Initialize duty repository
   }
 
   /// Initialize local notifications

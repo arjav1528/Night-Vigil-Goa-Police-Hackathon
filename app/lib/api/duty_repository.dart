@@ -82,4 +82,35 @@ class DutyRepository {
       throw Exception(errorMsg);
     }
   }
+
+  Future<void> trackLocation({
+    required String dutyId,
+    required double latitude,
+    required double longitude,
+    required bool isInside,
+  }) async {
+    try {
+      final token = await _secureStorage.read(key: _tokenKey);
+      if (token == null) throw Exception('No authentication token found');
+
+      final response = await _dio.post(
+        '/duties/location-tracking',
+        data: {
+          'dutyId': dutyId,
+          'latitude': latitude,
+          'longitude': longitude,
+          'isInside': isInside,
+          'timestamp': DateTime.now().toUtc().toIso8601String(),
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to track location');
+      }
+    } on DioException catch (e) {
+      final errorMsg = e.response?.data?['detail'] ?? 'Location tracking failed';
+      throw Exception(errorMsg);
+    }
+  }
 }

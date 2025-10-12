@@ -5,6 +5,7 @@ import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import { AssignDutyModal } from "../components/AssignDutyModal";
 import { MapComponent, getMarkerColor } from "../components/MapComponent";
+import { LocationHistoryModal } from "../components/LocationHistoryModal";
 
 export const Dashboard = () => {
   const [officers, setOfficers] = useState([]);
@@ -12,6 +13,8 @@ export const Dashboard = () => {
   const [error, setError] = useState("");
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState(null);
+  const [showLocationHistory, setShowLocationHistory] = useState(false);
+  const [selectedOfficerForHistory, setSelectedOfficerForHistory] = useState(null);
   const { logout, getAuthHeaders } = useAuth();
 
   const fetchDashboardData = async () => {
@@ -126,6 +129,16 @@ export const Dashboard = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const openLocationHistory = (officer) => {
+    setSelectedOfficerForHistory(officer);
+    setShowLocationHistory(true);
+  };
+
+  const closeLocationHistory = () => {
+    setShowLocationHistory(false);
+    setSelectedOfficerForHistory(null);
   };
 
   const getStatusColor = (status) => {
@@ -295,6 +308,16 @@ export const Dashboard = () => {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Add location history button */}
+                      <div className="mt-2">
+                        <button
+                          onClick={() => openLocationHistory(officer)}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          View Location History
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -321,11 +344,20 @@ export const Dashboard = () => {
           <MapComponent officersWithDuties={officers} />
         </div>
       </div>
+      {/* Modals */}
       {showAssignModal && selectedOfficer && (
         <AssignDutyModal
           officer={selectedOfficer}
           onClose={closeAssignModal}
           onDutyAssigned={handleDutyAssigned}
+        />
+      )}
+      
+      {showLocationHistory && selectedOfficerForHistory && (
+        <LocationHistoryModal
+          officer={selectedOfficerForHistory}
+          duty={selectedOfficerForHistory.assignedDuty}
+          onClose={closeLocationHistory}
         />
       )}
     </div>

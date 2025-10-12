@@ -277,3 +277,44 @@ class DutyReport:
             "missed": self.missed,
             "complianceRate": self.complianceRate,
         }
+
+
+class LocationLog:
+    def __init__(
+        self,
+        id: str = None,
+        dutyId: str = None,
+        officerId: str = None,
+        latitude: float = 0.0,
+        longitude: float = 0.0,
+        isInside: bool = False,
+        distance: float = 0.0,
+        timestamp: Optional[datetime] = None,
+        remarks: Optional[str] = None,
+        duty: Optional[DutyAssignment] = None,
+        officer: Optional[User] = None,
+    ):
+        self.id = id or generate_id()
+        self.dutyId = dutyId
+        self.officerId = officerId
+        self.latitude = latitude
+        self.longitude = longitude
+        self.isInside = isInside
+        self.distance = distance
+        self.timestamp = timestamp or datetime.now(timezone.utc)
+        self.remarks = remarks
+        self.duty = duty
+        self.officer = officer
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "dutyId": self.dutyId,
+            "officerId": self.officerId,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "isInside": self.isInside,
+            "distance": self.distance,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "remarks": self.remarks,
+        }

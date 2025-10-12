@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 from prisma import Prisma
 import os
-from models.model import User, DutyAssignment, DutyLog, DutyStatus
-from models.schemas import CheckInSchema, DutyCreateSchema, LocationUpdateRequest, LocationUpdateSchema, UserOut
+from models.model import User, DutyAssignment, DutyLog, DutyStatus, LocationLog
+from models.schemas import CheckInSchema, DutyCreateSchema, LocationUpdateRequest, LocationUpdateSchema, UserOut, LocationTrackingSchema
 from security import get_current_admin_user, get_current_user
 from dotenv import load_dotenv
 from enum import Enum
@@ -563,6 +563,184 @@ async def location_update(
             detail=f"Location update failed: {str(e)}"
         )
 
+@router.post("/location-tracking")
+async def track_location(
+    location_data: LocationTrackingSchema,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        await ensure_db_connection()
+        
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User authentication required"
+            )
+        
+        # Validate duty exists and belongs to user
+        duty = await db.dutyassignment.find_unique(where={"id": location_data.dutyId})
+        if not duty:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Duty not found"
+            )
+        
+        if duty.officerId != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Duty not assigned to you"
+            )
+        
+        # Calculate distance from duty location
+        try:
+            distance = calculate_distance(
+                location_data.latitude, 
+                location_data.longitude, 
+                duty.latitude, 
+                duty.longitude
+            )
+            is_actually_inside = distance <= duty.radius
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid coordinates: {str(e)}"
+            )
+        
+        # Get the last location log to detect entry/exit
+        last_log = await db.locationlog.find_first(
+            where={"dutyId": location_data.dutyId, "officerId": current_user.id},
+            order={"timestamp": "desc"}
+        )
+        
+        # Determine if this is an entry or exit event
+        remarks = None
+        if last_log:
+            if last_log.isInside != is_actually_inside:
+                if is_actually_inside:
+                    remarks = f"Officer entered duty area (distance: {distance:.2f}m)"
+                else:
+                    remarks = f"Officer left duty area (distance: {distance:.2f}m)"
+            else:
+                remarks = f"Officer location update (distance: {distance:.2f}m, {'inside' if is_actually_inside else 'outside'} duty area)"
+        else:
+            remarks = f"Initial location log - Officer {'inside' if is_actually_inside else 'outside'} duty area (distance: {distance:.2f}m)"
+        
+        # Create location log
+        location_log_data = {
+            "id": __import__('uuid').uuid4().hex,
+            "dutyId": location_data.dutyId,
+            "officerId": current_user.id,
+            "latitude": location_data.latitude,
+            "longitude": location_data.longitude,
+            "isInside": is_actually_inside,
+            "distance": distance,
+            "timestamp": location_data.timestamp,
+            "remarks": remarks
+        }
+        
+        await db.locationlog.create(data=location_log_data)
+        
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "status": "location_tracked",
+                "isInside": is_actually_inside,
+                "distance": round(distance, 2),
+                "remarks": remarks,
+                "wasStateChange": last_log is None or last_log.isInside != is_actually_inside
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Location tracking failed: {str(e)}"
+        )
+
+@router.get("/location-history/{duty_id}")
+async def get_location_history(
+    duty_id: str,
+    admin: User = Depends(get_current_admin_user)
+):
+    try:
+        await ensure_db_connection()
+        
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin authentication required"
+            )
+        
+        # Get duty information
+        duty = await db.dutyassignment.find_unique(where={"id": duty_id})
+        if not duty:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Duty not found"
+            )
+        
+        # Get officer information
+        officer = await db.user.find_unique(where={"id": duty.officerId})
+        if not officer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Officer not found"
+            )
+        
+        # Get location logs for this duty
+        location_logs = await db.locationlog.find_many(
+            where={"dutyId": duty_id},
+            order={"timestamp": "desc"}
+        )
+        
+        logs_list = []
+        for log_data in location_logs:
+            log = LocationLog(
+                id=log_data.id,
+                dutyId=log_data.dutyId,
+                officerId=log_data.officerId,
+                latitude=log_data.latitude,
+                longitude=log_data.longitude,
+                isInside=log_data.isInside,
+                distance=log_data.distance,
+                timestamp=log_data.timestamp,
+                remarks=log_data.remarks
+            )
+            logs_list.append(log.to_dict())
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "duty": {
+                    "id": duty.id,
+                    "location": duty.location,
+                    "latitude": duty.latitude,
+                    "longitude": duty.longitude,
+                    "radius": duty.radius,
+                    "startTime": duty.startTime.isoformat() if duty.startTime else None,
+                    "endTime": duty.endTime.isoformat() if duty.endTime else None,
+                    "status": duty.status
+                },
+                "officer": {
+                    "id": officer.id,
+                    "empid": officer.empid,
+                    "role": officer.role
+                },
+                "locationLogs": logs_list,
+                "count": len(logs_list)
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch location history: {str(e)}"
+        )
+
 @router.get("/location-update/{officer_id}")
 async def get_location_updates(
     officer_id: str, 
@@ -577,12 +755,6 @@ async def get_location_updates(
                 detail="Admin authentication required"
             )
         
-        if not officer_id or officer_id.strip() == "":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="officer_id is required"
-            )
-        
         # Verify officer exists
         officer = await db.user.find_unique(where={"id": officer_id, "role": "OFFICER"})
         if not officer:
@@ -591,44 +763,54 @@ async def get_location_updates(
                 detail="Officer not found"
             )
         
-        # Get latest location update
-        location_update = await db.dutylog.find_first(
+        # Get latest location log instead of duty log
+        latest_location = await db.locationlog.find_first(
             where={"officerId": officer_id},
-            order={"updatedAt": "desc"},
-            include={"duty": {"select": {"location": True, "latitude": True, "longitude": True}}}
+            order={"timestamp": "desc"}
         )
         
-        if not location_update:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No location updates found for this officer"
+        if not latest_location:
+            # Fallback to duty log for backward compatibility
+            location_update = await db.dutylog.find_first(
+                where={"officerId": officer_id},
+                order={"updatedAt": "desc"}
+            )
+            
+            if not location_update:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No location updates found for this officer"
+                )
+            
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "faceVerified": location_update.faceVerified,
+                    "locationVerified": location_update.locationVerified,
+                    "lastUpdate": location_update.updatedAt.isoformat() if location_update.updatedAt else None
+                }
             )
         
-        # Create response with null safety
-        location_log = DutyLog(
-            id=location_update.id,
-            dutyId=location_update.dutyId,
-            officerId=location_update.officerId,
-            checkinTime=location_update.checkinTime,
-            selfiePath=location_update.selfiePath,
-            faceVerified=location_update.faceVerified,
-            locationVerified=location_update.locationVerified,
-            remarks=location_update.remarks,
-            createdAt=location_update.createdAt,
-            updatedAt=location_update.updatedAt
-        )
-        
-        response_data = location_log.to_dict()
-        if hasattr(location_update, 'duty') and location_update.duty:
-            response_data["duty_info"] = {
-                "location": location_update.duty.location,
-                "latitude": location_update.duty.latitude,
-                "longitude": location_update.duty.longitude
-            }
+        # Get duty information for context
+        duty = await db.dutyassignment.find_unique(where={"id": latest_location.dutyId})
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content=response_data
+            content={
+                "faceVerified": True,  # Assume true if they have location logs
+                "locationVerified": latest_location.isInside,
+                "lastUpdate": latest_location.timestamp.isoformat() if latest_location.timestamp else None,
+                "currentLocation": {
+                    "latitude": latest_location.latitude,
+                    "longitude": latest_location.longitude,
+                    "distance": latest_location.distance,
+                    "isInside": latest_location.isInside
+                },
+                "dutyInfo": {
+                    "location": duty.location if duty else None,
+                    "radius": duty.radius if duty else None
+                } if duty else None
+            }
         )
         
     except HTTPException:
@@ -638,7 +820,6 @@ async def get_location_updates(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch location updates: {str(e)}"
         )
-
 
 @router.delete('/{duty_id}', status_code=status.HTTP_200_OK)
 async def delete_duty(

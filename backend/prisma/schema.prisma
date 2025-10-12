@@ -32,6 +32,7 @@ model User {
   dutyLogs       DutyLog[]
   notifications  Notification[]
   reports        DutyReport[]
+  locationLogs   LocationLog[]
 }
 
 model DutyAssignment {
@@ -50,6 +51,7 @@ model DutyAssignment {
   officer User @relation("OfficerDuties", fields: [officerId], references: [id])
   admin   User @relation("AdminAssignments", fields: [assignedBy], references: [id])
   logs    DutyLog[]
+  locationLogs LocationLog[]
 }
 
 model DutyLog {
@@ -103,6 +105,27 @@ model DutyReport {
 
   // Relations
   officer User @relation(fields: [officerId], references: [id])
+}
+
+model LocationLog {
+  id        String   @id @default(cuid())
+  dutyId    String
+  officerId String
+  latitude  Float
+  longitude Float
+  isInside  Boolean
+  distance  Float
+  timestamp DateTime @default(now())
+  remarks   String?
+
+  // Relations
+  duty    DutyAssignment @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+  officer User           @relation(fields: [officerId], references: [id], onDelete: Cascade)
+
+  @@map("locationlogs")
+  @@index([dutyId])
+  @@index([officerId])
+  @@index([timestamp])
 }
 
 enum Role {
