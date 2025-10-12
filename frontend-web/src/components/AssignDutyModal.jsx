@@ -156,7 +156,7 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/55 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl relative transform transition-all duration-300 ease-in-out scale-100 opacity-100">
+      <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl relative transform transition-all duration-300 ease-in-out scale-100 opacity-100 overflow-y-auto max-h-[90vh]">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
@@ -170,8 +170,8 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
           <div className="space-y-4">
             <div className="w-full h-80 rounded-lg overflow-hidden shadow-md">
               <MapContainer
-                center={[15.3, 74.0]}
-                zoom={10}
+                center={[15.4, 73.9]}
+                zoom={11}
                 scrollWheelZoom={true}
                 className="w-full h-full"
               >

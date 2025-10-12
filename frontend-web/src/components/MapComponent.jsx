@@ -54,12 +54,12 @@ export const MapComponent = ({ officersWithDuties }) => {
 
   // Set the map center to the approximate center of Goa.
   // The coordinates are roughly 15.3000° N, 74.0000° E.
-  const center = [15.3, 74.0];
+  const center = [15.4, 74.0];
 
   return (
     <MapContainer
       center={center}
-      zoom={10}
+      zoom={11}
       scrollWheelZoom={true}
       className="w-full h-full z-20"
     >
