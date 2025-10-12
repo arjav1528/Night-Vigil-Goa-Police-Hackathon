@@ -12,8 +12,8 @@ class AuthRepository {
       : _dio = Dio(
           BaseOptions(
             baseUrl: dotenv.env['BACKEND_URL']!,
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 5),
+            connectTimeout: const Duration(seconds: 60),
+            receiveTimeout: const Duration(seconds: 60),
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',

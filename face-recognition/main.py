@@ -19,7 +19,7 @@ app = FastAPI(
 db = Prisma(auto_register=True)
 
 # --- Configuration ---
-RECOGNITION_THRESHOLD = 0.8 # Confidence threshold for a successful match
+RECOGNITION_THRESHOLD = 0.4 # Lowered threshold for better real-world performance
 
 # --- Pydantic Models for API Data Validation ---
 class EnrollRequest(BaseModel):
@@ -118,15 +118,34 @@ async def verify_face(request: VerifyRequest):
 
     # 3. Compare the new selfie to all stored embeddings and find the best match
     highest_similarity = 0.0
+    similarities = []
     for record in stored_embeddings:
         similarity = fu.cosine_sim(unknown_embedding, record.embedding)
+        similarities.append(similarity)
         if similarity > highest_similarity:
             highest_similarity = similarity
 
-    # 4. Return the result based on the confidence threshold
+    # 4. Enhanced response with debugging information
     is_verified = highest_similarity >= RECOGNITION_THRESHOLD
+    
+    # Log detailed verification attempt
+    print(f"Face verification attempt for user {request.user_id}:")
+    print(f"  - Stored embeddings: {len(stored_embeddings)}")
+    print(f"  - Individual similarities: {[round(s, 4) for s in similarities]}")
+    print(f"  - Highest similarity: {round(highest_similarity, 4)}")
+    print(f"  - Threshold: {RECOGNITION_THRESHOLD}")
+    print(f"  - Verified: {is_verified}")
+    
     return {
         "verified": is_verified,
-        "confidence": round(highest_similarity, 4)
+        "confidence": round(highest_similarity, 4),
+        "threshold": RECOGNITION_THRESHOLD,
+        "num_comparisons": len(stored_embeddings),
+        "all_similarities": [round(s, 4) for s in similarities],
+        "debug_info": {
+            "highest_similarity": round(highest_similarity, 4),
+            "threshold_used": RECOGNITION_THRESHOLD,
+            "margin": round(highest_similarity - RECOGNITION_THRESHOLD, 4)
+        }
     }
 

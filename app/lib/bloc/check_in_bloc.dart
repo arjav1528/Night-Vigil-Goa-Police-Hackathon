@@ -71,12 +71,31 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
       );
 
       // Step 3: Call Backend to Check-in
-      await dutyRepository.checkIn(
-        dutyId: event.dutyId,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        selfieUrl: selfieUrl,
-      );
+      try {
+        await dutyRepository.checkIn(
+          dutyId: event.dutyId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          selfieUrl: selfieUrl,
+        );
+      } catch (checkInError) {
+        // Handle face verification specific errors
+        String errorMessage = checkInError.toString().replaceAll('Exception: ', '');
+        
+        if (errorMessage.contains('Face verification failed')) {
+          if (errorMessage.contains('Confidence')) {
+            // Extract confidence score for user feedback
+            emit(CheckInFailure(error: '$errorMessage\n\nTips for better face verification:\n• Ensure good lighting\n• Look directly at the camera\n• Remove glasses or masks if possible\n• Try taking the photo again'));
+          } else if (errorMessage.contains('No face detected')) {
+            emit(CheckInFailure(error: 'No face detected in the selfie. Please take a clear photo with your face visible and try again.'));
+          } else {
+            emit(CheckInFailure(error: errorMessage));
+          }
+        } else {
+          emit(CheckInFailure(error: errorMessage));
+        }
+        return;
+      }
 
       // Step 4: Send initial location tracking data to backend
       try {
@@ -107,7 +126,7 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
         await geofencingService.startGeofencing([event.duty]);
         debugPrint('DEBUG: Geofencing started successfully');
         
-        emit(CheckInSuccess(message: 'Check-in successful! Geofencing is now active and monitoring your location.'));
+        emit(CheckInSuccess(message: 'Check-in successful! Face verified and geofencing is now active.'));
       } catch (geofencingError) {
         debugPrint('WARNING: Geofencing failed to start: $geofencingError');
         // Still emit success for check-in, but mention geofencing issue

@@ -42,7 +42,13 @@ This is a standalone service built with **FastAPI** and containerized with **Doc
 
 * **Face Detection**: Uses the `MTCNN` (Multi-task Cascaded Convolutional Networks) model to accurately detect and align faces within an image.
 * **Embedding Generation**: Employs the `InceptionResnetV1` model, pre-trained on the `vggface2` dataset, to generate a 512-dimensional facial embedding (a numerical representation of a face).
-* **Verification Logic**: When an officer checks in, the service compares the embedding from the new selfie to the stored embeddings for that user. It uses **cosine similarity** to measure the likeness, and a check-in is considered successful if the similarity score exceeds a predefined **threshold of 0.8**.
+* **Verification Logic**: When an officer checks in, the service compares the embedding from the new selfie to the stored embeddings for that user. It uses **cosine similarity** to measure the likeness, and a check-in is considered successful if the similarity score exceeds a predefined **threshold of 0.4** (lowered for real-world performance).
+
+**Face Recognition Performance Notes:**
+- The system is optimized for real-world conditions with varying lighting and angles
+- Multiple enrollment photos improve verification accuracy
+- The confidence threshold is set to 0.4 to balance security with usability
+- Failed verifications include detailed confidence scores for debugging
 
 ***
 

@@ -85,9 +85,21 @@ async def verify_user_face(user_id: str, selfie_url: str) -> tuple[bool, float]:
             result = response.json()
             verified = result.get("verified", False)
             confidence = result.get("confidence", 0.0)
+            threshold = result.get("threshold", 0.4)
+            debug_info = result.get("debug_info", {})
             
-            logger.info(f"Face verification for user {user_id}: verified={verified}, confidence={confidence}")
+            # Enhanced logging
+            logger.info(f"Face verification for user {user_id}:")
+            logger.info(f"  - Verified: {verified}")
+            logger.info(f"  - Confidence: {confidence}")
+            logger.info(f"  - Threshold: {threshold}")
+            logger.info(f"  - Margin: {debug_info.get('margin', 'unknown')}")
+            logger.info(f"  - Comparisons: {result.get('num_comparisons', 'unknown')}")
+            
             return verified, confidence
+        elif response.status_code == 404:
+            logger.error(f"User {user_id} not enrolled for face recognition")
+            return False, 0.0
         else:
             logger.error(f"Face verification failed for user {user_id}: {response.text}")
             return False, 0.0
@@ -376,9 +388,15 @@ async def duty_check_in(
             face_verified, face_confidence = await verify_user_face(current_user.id, check_in_data.selfieUrl)
             
             if not face_verified:
+                # Provide more detailed error message
+                if face_confidence == 0.0:
+                    error_message = "Face verification failed: No face detected or user not enrolled for face recognition."
+                else:
+                    error_message = f"Face verification failed: Confidence score {face_confidence:.2f} is below the required threshold. Please ensure good lighting and look directly at the camera."
+                
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Face verification failed. Confidence: {face_confidence:.2f}"
+                    detail=error_message
                 )
         
         # Create duty log
