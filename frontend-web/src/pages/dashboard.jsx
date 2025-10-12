@@ -155,8 +155,19 @@ export const Dashboard = () => {
   };
 
   const isOfficerAvailableForAssignment = (officer) => {
-    // Officer is available if they have no duty or their duty is completed
-    return !officer.assignedDuty || officer.assignedDuty.status === "COMPLETED";
+    // Officer is available if they have no duty or their duty is completed/missed and has ended
+    if (!officer.assignedDuty) {
+      return true;
+    }
+    
+    const now = new Date();
+    const dutyEndTime = new Date(officer.assignedDuty.endTime);
+    
+    // Only allow reassignment if duty has ended AND status is completed/missed
+    return (
+      (officer.assignedDuty.status === "COMPLETED" || officer.assignedDuty.status === "MISSED") &&
+      now > dutyEndTime
+    );
   };
 
   const getAssignButtonText = (officer) => {
@@ -164,15 +175,33 @@ export const Dashboard = () => {
       return "Assign Duty";
     }
     
+    const now = new Date();
+    const dutyEndTime = new Date(officer.assignedDuty.endTime);
+    
+    // If duty is currently active (hasn't ended yet)
+    if (now <= dutyEndTime) {
+      switch (officer.assignedDuty.status) {
+        case "COMPLETED":
+          return "Currently On Duty";
+        case "PENDING":
+          return "Currently On Duty";
+        case "MISSED":
+          return "Duty In Progress";
+        default:
+          return "Currently On Duty";
+      }
+    }
+    
+    // If duty has ended
     switch (officer.assignedDuty.status) {
       case "COMPLETED":
         return "Reassign Duty";
-      case "PENDING":
-        return "Already Assigned";
       case "MISSED":
         return "Reassign Duty";
+      case "PENDING":
+        return "Reassign Duty";
       default:
-        return "Already Assigned";
+        return "Reassign Duty";
     }
   };
 

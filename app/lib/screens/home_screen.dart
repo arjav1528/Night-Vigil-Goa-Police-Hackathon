@@ -82,16 +82,16 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Geofencing widget
-                      GeofencingWidget(duties: state.duties),
+                      // GeofencingWidget(duties: state.duties),
                       
                       // Duties list
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.w),
-                        child: Text(
-                          'My Duties',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                      ),
+                      // Padding(
+                      //   padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      //   child: Text(
+                      //     'My Duties',
+                      //     style: Theme.of(context).textTheme.headlineSmall,
+                      //   ),
+                      // ),
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
