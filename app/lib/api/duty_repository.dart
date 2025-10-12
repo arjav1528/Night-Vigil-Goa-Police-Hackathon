@@ -93,24 +93,34 @@ class DutyRepository {
       final token = await _secureStorage.read(key: _tokenKey);
       if (token == null) throw Exception('No authentication token found');
 
+      final requestData = {
+        'dutyId': dutyId,
+        'latitude': latitude,
+        'longitude': longitude,
+        'isInside': isInside,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      debugPrint('DEBUG: Sending location tracking: $requestData');
+
       final response = await _dio.post(
         '/duties/location-tracking',
-        data: {
-          'dutyId': dutyId,
-          'latitude': latitude,
-          'longitude': longitude,
-          'isInside': isInside,
-          'timestamp': DateTime.now().toUtc().toIso8601String(),
-        },
+        data: requestData,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
+      debugPrint('DEBUG: Location tracking response: ${response.statusCode}');
+
       if (response.statusCode != 201) {
-        throw Exception('Failed to track location');
+        throw Exception('Failed to track location: ${response.statusCode}');
       }
     } on DioException catch (e) {
       final errorMsg = e.response?.data?['detail'] ?? 'Location tracking failed';
+      debugPrint('ERROR: Location tracking failed: $errorMsg');
       throw Exception(errorMsg);
+    } catch (e) {
+      debugPrint('ERROR: Location tracking exception: $e');
+      throw Exception('Location tracking failed: $e');
     }
   }
 }

@@ -459,6 +459,13 @@ Future<void> _performGeofenceCheck(SharedPreferences prefs, ServiceInstance serv
       final previousStatusKey = 'duty_${duty.id}_inside';
       final wasInside = prefs.getBool(previousStatusKey) ?? false;
       
+      // Always send location tracking data to backend
+      try {
+        await _sendLocationTrackingToBackend(duty.id, position, isInside);
+      } catch (e) {
+        debugPrint('Failed to send location tracking to backend: $e');
+      }
+      
       // Check if status changed
       if (isInside != wasInside) {
         await prefs.setBool(previousStatusKey, isInside);
@@ -481,6 +488,30 @@ Future<void> _performGeofenceCheck(SharedPreferences prefs, ServiceInstance serv
     }
   } catch (e) {
     debugPrint('Error in geofence check: $e');
+  }
+}
+
+/// Send location tracking data to backend
+Future<void> _sendLocationTrackingToBackend(
+  String dutyId,
+  Position position,
+  bool isInside,
+) async {
+  try {
+    // Import DutyRepository
+    final dutyRepository = DutyRepository();
+    
+    await dutyRepository.trackLocation(
+      dutyId: dutyId,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      isInside: isInside,
+    );
+    
+    debugPrint('Location tracking sent to backend: lat=${position.latitude}, lng=${position.longitude}, inside=$isInside');
+  } catch (e) {
+    debugPrint('Failed to send location tracking to backend: $e');
+    // Don't throw - we want background service to continue
   }
 }
 
@@ -507,7 +538,7 @@ Future<Position?> _getCurrentLocationSafely() async {
     try {
       position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 15), // Reduced timeout
       );
       return position;
     } catch (e) {
@@ -519,7 +550,7 @@ Future<Position?> _getCurrentLocationSafely() async {
       position = await Geolocator.getLastKnownPosition();
       if (position != null) {
         final locationAge = DateTime.now().difference(position.timestamp);
-        if (locationAge.inMinutes <= 5) {
+        if (locationAge.inMinutes <= 10) { // Increased tolerance
           debugPrint('Using last known location (${locationAge.inMinutes} min old)');
           return position;
         }
@@ -532,7 +563,7 @@ Future<Position?> _getCurrentLocationSafely() async {
     try {
       position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.low,
-        timeLimit: const Duration(seconds: 15),
+        timeLimit: const Duration(seconds: 20),
       );
       return position;
     } catch (e) {
@@ -551,7 +582,7 @@ Future<Position?> _getCurrentLocationSafely() async {
     debugPrint('Location timeout: $e');
     return null;
   } catch (e) {
-    debugPrint('Error getting location: $e');
+    debugPrint('Error getting location (${e.runtimeType}): $e');
     return null;
   }
 }

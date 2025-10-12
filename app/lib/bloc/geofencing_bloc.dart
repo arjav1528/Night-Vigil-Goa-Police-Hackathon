@@ -128,6 +128,7 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
   final GeofencingService _geofencingService;
   StreamSubscription<Position>? _positionStreamSubscription;
   Timer? _dutyCheckTimer; // Timer to check duty end times
+  Timer? _locationTrackingTimer; // Timer for periodic location tracking
 
   GeofencingBloc({GeofencingService? geofencingService})
       : _geofencingService = geofencingService ?? GeofencingService(),
@@ -147,6 +148,7 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
   Future<void> close() {
     _positionStreamSubscription?.cancel();
     _dutyCheckTimer?.cancel(); // Cancel duty check timer
+    _locationTrackingTimer?.cancel(); // Cancel location tracking timer
     return super.close();
   }
 

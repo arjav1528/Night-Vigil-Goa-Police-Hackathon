@@ -78,7 +78,20 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
         selfieUrl: selfieUrl,
       );
 
-      // Step 4: Automatically start compulsory geofencing after successful check-in
+      // Step 4: Send initial location tracking data to backend
+      try {
+        await dutyRepository.trackLocation(
+          dutyId: event.dutyId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          isInside: true, // Assume inside since check-in was successful
+        );
+        debugPrint('DEBUG: Initial location tracking sent');
+      } catch (trackingError) {
+        debugPrint('WARNING: Initial location tracking failed: $trackingError');
+      }
+
+      // Step 5: Automatically start compulsory geofencing after successful check-in
       try {
         debugPrint('DEBUG: Starting compulsory geofencing for duty: ${event.duty.id}');
         

@@ -614,8 +614,10 @@ async def track_location(
         
         # Determine if this is an entry or exit event
         remarks = None
+        was_state_change = False
         if last_log:
             if last_log.isInside != is_actually_inside:
+                was_state_change = True
                 if is_actually_inside:
                     remarks = f"Officer entered duty area (distance: {distance:.2f}m)"
                 else:
@@ -623,6 +625,7 @@ async def track_location(
             else:
                 remarks = f"Officer location update (distance: {distance:.2f}m, {'inside' if is_actually_inside else 'outside'} duty area)"
         else:
+            was_state_change = True
             remarks = f"Initial location log - Officer {'inside' if is_actually_inside else 'outside'} duty area (distance: {distance:.2f}m)"
         
         # Create location log
@@ -640,6 +643,9 @@ async def track_location(
         
         await db.locationlog.create(data=location_log_data)
         
+        # Log the tracking for debugging
+        print(f"Location tracked for officer {current_user.empid}: lat={location_data.latitude}, lng={location_data.longitude}, inside={is_actually_inside}, distance={distance:.2f}m")
+        
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
             content={
@@ -647,13 +653,14 @@ async def track_location(
                 "isInside": is_actually_inside,
                 "distance": round(distance, 2),
                 "remarks": remarks,
-                "wasStateChange": last_log is None or last_log.isInside != is_actually_inside
+                "wasStateChange": was_state_change
             }
         )
         
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Location tracking error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Location tracking failed: {str(e)}"
