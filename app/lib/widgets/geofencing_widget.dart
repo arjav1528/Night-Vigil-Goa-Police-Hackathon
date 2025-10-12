@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../bloc/geofencing_bloc.dart';
 import '../models/duty_assignment_model.dart';
-import '../utils/location_helper.dart';
 
 class GeofencingWidget extends StatelessWidget {
   final List<DutyAssignment> duties;
@@ -286,10 +285,10 @@ class GeofencingWidget extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      state.isUsingFallbackLocation ? Icons.location_history : Icons.my_location, 
+                    const Icon(
+                      Icons.my_location, 
                       size: 16,
-                      color: state.isUsingFallbackLocation ? Colors.orange : Colors.blue,
+                      color: Colors.blue,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -323,24 +322,6 @@ class GeofencingWidget extends StatelessWidget {
                     ],
                   ],
                 ),
-                if (state.isUsingFallbackLocation) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Using last known location',
-                      style: TextStyle(
-                        color: Colors.orange.shade700,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
                 // Show distance summary
                 if (state.dutyDistances.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -468,7 +449,28 @@ class GeofencingWidget extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => LocationHelper.showLocationTroubleshootingDialog(context),
+                    onPressed: () {
+                      // Show basic troubleshooting info
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Location Troubleshooting'),
+                          content: const Text(
+                            'Please ensure:\n'
+                            '• Location services are enabled\n'
+                            '• App has location permissions\n'
+                            '• GPS signal is available\n'
+                            '• Try restarting the app'
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.help_outline),
                     label: const Text('Help'),
                     style: OutlinedButton.styleFrom(

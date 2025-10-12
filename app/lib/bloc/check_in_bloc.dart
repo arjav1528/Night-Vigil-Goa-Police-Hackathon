@@ -3,6 +3,7 @@ import 'package:app/api/firebase_storage_service.dart';
 import 'package:app/services/location_service.dart';
 import 'package:app/services/geofencing_service.dart';
 import 'package:app/models/duty_assignment_model.dart';
+import 'package:flutter/material.dart';
 
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -61,7 +62,7 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
       final position = await locationService.getCurrentLocation();
       
       // DEBUG: Print current location
-      print('DEBUG: Current location - Lat: ${position.latitude}, Long: ${position.longitude}');
+      debugPrint('DEBUG: Current location - Lat: ${position.latitude}, Long: ${position.longitude}');
 
       // Step 2: Upload Selfie to Firebase Storage
       final selfieUrl = await storageService.uploadImage(
@@ -79,23 +80,23 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
 
       // Step 4: Automatically start compulsory geofencing after successful check-in
       try {
-        print('DEBUG: Starting compulsory geofencing for duty: ${event.duty.id}');
+        debugPrint('DEBUG: Starting compulsory geofencing for duty: ${event.duty.id}');
         
         // Request permissions first
         final permissionsGranted = await geofencingService.requestPermissions();
         if (!permissionsGranted) {
-          print('WARNING: Geofencing permissions not granted, but check-in was successful');
+          debugPrint('WARNING: Geofencing permissions not granted, but check-in was successful');
           emit(CheckInSuccess(message: 'Check-in successful! Please grant location permissions for geofencing to work properly.'));
           return;
         }
 
         // Start geofencing with the current duty
         await geofencingService.startGeofencing([event.duty]);
-        print('DEBUG: Geofencing started successfully');
+        debugPrint('DEBUG: Geofencing started successfully');
         
         emit(CheckInSuccess(message: 'Check-in successful! Geofencing is now active and monitoring your location.'));
       } catch (geofencingError) {
-        print('WARNING: Geofencing failed to start: $geofencingError');
+        debugPrint('WARNING: Geofencing failed to start: $geofencingError');
         // Still emit success for check-in, but mention geofencing issue
         emit(CheckInSuccess(message: 'Check-in successful! However, geofencing could not be started. Please contact support.'));
       }

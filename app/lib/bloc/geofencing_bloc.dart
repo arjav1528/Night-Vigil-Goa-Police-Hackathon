@@ -7,7 +7,6 @@ import 'package:equatable/equatable.dart';
 
 import '../models/duty_assignment_model.dart';
 import '../services/geofencing_service.dart';
-import '../utils/location_helper.dart';
 
 // Events
 abstract class GeofencingEvent extends Equatable {
@@ -87,32 +86,28 @@ class GeofencingActive extends GeofencingState {
   final Position? currentLocation;
   final List<String> dutiesUserIsIn;
   final Map<String, double> dutyDistances; // Map of duty ID to distance in meters
-  final bool isUsingFallbackLocation; // Track if using last known location
 
   const GeofencingActive({
     required this.activeDuties,
     this.currentLocation,
     this.dutiesUserIsIn = const [],
     this.dutyDistances = const {},
-    this.isUsingFallbackLocation = false,
   });
 
   @override
-  List<Object?> get props => [activeDuties, currentLocation, dutiesUserIsIn, dutyDistances, isUsingFallbackLocation];
+  List<Object?> get props => [activeDuties, currentLocation, dutiesUserIsIn, dutyDistances];
 
   GeofencingActive copyWith({
     List<DutyAssignment>? activeDuties,
     Position? currentLocation,
     List<String>? dutiesUserIsIn,
     Map<String, double>? dutyDistances,
-    bool? isUsingFallbackLocation,
   }) {
     return GeofencingActive(
       activeDuties: activeDuties ?? this.activeDuties,
       currentLocation: currentLocation ?? this.currentLocation,
       dutiesUserIsIn: dutiesUserIsIn ?? this.dutiesUserIsIn,
       dutyDistances: dutyDistances ?? this.dutyDistances,
-      isUsingFallbackLocation: isUsingFallbackLocation ?? this.isUsingFallbackLocation,
     );
   }
 }
@@ -133,7 +128,6 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
   final GeofencingService _geofencingService;
   StreamSubscription<Position>? _positionStreamSubscription;
   Timer? _dutyCheckTimer; // Timer to check duty end times
-  Timer? _preciseEndTimer; // Timer for precise duty end time
 
   GeofencingBloc({GeofencingService? geofencingService})
       : _geofencingService = geofencingService ?? GeofencingService(),
@@ -153,7 +147,6 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
   Future<void> close() {
     _positionStreamSubscription?.cancel();
     _dutyCheckTimer?.cancel(); // Cancel duty check timer
-    _preciseEndTimer?.cancel(); // Cancel precise end timer
     return super.close();
   }
 
@@ -252,7 +245,6 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
       await _geofencingService.stopGeofencing();
       _positionStreamSubscription?.cancel();
       _dutyCheckTimer?.cancel(); // Cancel duty monitoring timer
-      _preciseEndTimer?.cancel(); // Cancel precise end timer
       
       emit(GeofencingInactive());
     } catch (e) {
@@ -331,55 +323,27 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
       if (state is GeofencingActive) {
         final currentState = state as GeofencingActive;
         
-        // Use the location helper for better error handling
-        final locationResult = await LocationHelper.getCurrentLocationSafely();
-        
-        if (!locationResult.isSuccess) {
-          // Instead of emitting an error state immediately, try to continue with last known location
-          if (currentState.currentLocation != null) {
-            // Check if last known location is still reasonably recent (within 10 minutes)
-            final now = DateTime.now();
-            final locationAge = now.difference(currentState.currentLocation!.timestamp);
-            
-            if (locationAge.inMinutes <= 10) {
-              debugPrint('Using last known location (${locationAge.inMinutes} minutes old) due to location error');
-              // Continue with existing location but show a warning
-              // Don't emit error state to avoid disrupting the user experience
-              return;
-            }
-          }
-          
-          // Only emit error if we have no recent location data
-          debugPrint('Location error: ${locationResult.error}');
-          emit(GeofencingError(locationResult.error!));
-          return;
-        }
-        
-        final position = locationResult.position!;
+        // Get current location
+        final position = await Geolocator.getCurrentPosition();
         
         // Check which duties the user is currently within and calculate distances
         final dutiesUserIsIn = <String>[];
         final dutyDistances = <String, double>{};
         
         for (final duty in currentState.activeDuties) {
-          try {
-            // Calculate distance to this duty location
-            final distance = Geolocator.distanceBetween(
-              position.latitude,
-              position.longitude,
-              duty.latitude,
-              duty.longitude,
-            );
-            dutyDistances[duty.id] = distance;
-            
-            // Check if user is within the duty area
-            final isWithin = await _geofencingService.isWithinDutyArea(duty, position);
-            if (isWithin) {
-              dutiesUserIsIn.add(duty.id);
-            }
-          } catch (distanceError) {
-            debugPrint('Error calculating distance for duty ${duty.id}: $distanceError');
-            // Continue with other duties even if one fails
+          // Calculate distance to this duty location
+          final distance = Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            duty.latitude,
+            duty.longitude,
+          );
+          dutyDistances[duty.id] = distance;
+          
+          // Check if user is within the duty area
+          final isWithin = await _geofencingService.isWithinDutyArea(duty, position);
+          if (isWithin) {
+            dutiesUserIsIn.add(duty.id);
           }
         }
         
@@ -393,15 +357,6 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
         add(CheckDutyEndTimes());
       }
     } catch (e) {
-      debugPrint('Unexpected error in location check: $e');
-      // Try to continue with existing state rather than showing error
-      if (state is GeofencingActive) {
-        final currentState = state as GeofencingActive;
-        if (currentState.currentLocation != null) {
-          debugPrint('Continuing with last known location due to unexpected error');
-          return;
-        }
-      }
       emit(GeofencingError('Failed to check location: $e'));
     }
   }
@@ -411,68 +366,28 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
     
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium, // Use medium accuracy for better battery life and reliability
+        accuracy: LocationAccuracy.high,
         distanceFilter: 10, // Update every 10 meters
-        timeLimit: Duration(seconds: 20), // Increased timeout for better reliability
+        timeLimit: Duration(seconds: 30),
       ),
     ).listen(
       (Position position) {
-        debugPrint('Location stream update: ${position.latitude}, ${position.longitude}');
         add(CheckCurrentLocationAgainstDuties());
       },
       onError: (error) {
-        debugPrint('Location stream error: $error');
-        // Don't stop trying - continue with periodic checks
-        // The CheckCurrentLocationAgainstDuties will handle fallback logic
-        add(CheckCurrentLocationAgainstDuties());
+        add(CheckCurrentLocationAgainstDuties()); // Still try to check manually
       },
-      cancelOnError: false, // Don't cancel stream on errors
     );
   }
 
   /// Start monitoring duty end times to automatically stop geofencing
   void _startDutyEndMonitoring() {
     _dutyCheckTimer?.cancel();
-    _preciseEndTimer?.cancel();
     
-    // Check every 10 seconds if any duties have ended (reduced from 1 minute for faster response)
-    _dutyCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Check every minute if any duties have ended
+    _dutyCheckTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       add(CheckDutyEndTimes());
     });
-    
-    // Also set up a precise timer for the earliest duty end time
-    _schedulePreciseEndTimer();
-  }
-
-  /// Schedule a precise timer for when the earliest duty ends
-  void _schedulePreciseEndTimer() {
-    _preciseEndTimer?.cancel();
-    
-    if (state is GeofencingActive) {
-      final currentState = state as GeofencingActive;
-      final now = DateTime.now();
-      
-      // Find the earliest duty end time
-      DateTime? earliestEndTime;
-      for (final duty in currentState.activeDuties) {
-        if (duty.endTime.isAfter(now)) {
-          if (earliestEndTime == null || duty.endTime.isBefore(earliestEndTime)) {
-            earliestEndTime = duty.endTime;
-          }
-        }
-      }
-      
-      if (earliestEndTime != null) {
-        final timeUntilEnd = earliestEndTime.difference(now);
-        if (timeUntilEnd.inMilliseconds > 0) {
-          debugPrint('Setting precise timer for duty end in ${timeUntilEnd.inMinutes} minutes');
-          _preciseEndTimer = Timer(timeUntilEnd, () {
-            debugPrint('Precise duty end timer triggered');
-            add(CheckDutyEndTimes());
-          });
-        }
-      }
-    }
   }
 
   /// Handle checking duty end times and auto-stopping geofencing
@@ -529,9 +444,6 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
             dutyDistances: updatedDistances,
             dutiesUserIsIn: updatedDutiesUserIsIn,
           ));
-          
-          // Reschedule precise timer for remaining duties
-          _schedulePreciseEndTimer();
         }
       }
     } catch (e) {
