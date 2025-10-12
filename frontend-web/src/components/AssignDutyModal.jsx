@@ -43,6 +43,7 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
   const [radius, setRadius] = useState("100");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,13 +54,23 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
       setError("Please select a location on the map.");
       return;
     }
+
+    // Create local datetime objects (browser's timezone)
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = new Date(`${endDate}T${endTime}`);
+
+    // Validate that end date/time is after start date/time
+    if (endDateTime <= startDateTime) {
+      setError("End date and time must be after start date and time.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
-    const formattedStartTime = new Date(
-      `${date}T${startTime}:00Z`
-    ).toISOString();
-    const formattedEndTime = new Date(`${date}T${endTime}:00Z`).toISOString();
+    // Convert local times to UTC for API
+    const formattedStartTime = startDateTime.toISOString();
+    const formattedEndTime = endDateTime.toISOString();
 
     const payload = {
       officerId: officer.id,
@@ -102,6 +113,47 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
 
   const markerColor = getMarkerColor(officer.id);
 
+  const getModalTitle = () => {
+    if (!officer.assignedDuty) {
+      return `Assign Duty to ${officer.empid}`;
+    }
+
+    if (
+      officer.assignedDuty.status === "COMPLETED" ||
+      officer.assignedDuty.status === "MISSED"
+    ) {
+      return `Reassign Duty to ${officer.empid}`;
+    }
+
+    return `Assign Duty to ${officer.empid}`;
+  };
+
+  const getSubmitButtonText = () => {
+    if (!officer.assignedDuty) {
+      return loading ? "Assigning..." : "Assign Duty";
+    }
+
+    if (
+      officer.assignedDuty.status === "COMPLETED" ||
+      officer.assignedDuty.status === "MISSED"
+    ) {
+      return loading ? "Reassigning..." : "Reassign Duty";
+    }
+
+    return loading ? "Assigning..." : "Assign Duty";
+  };
+
+  // Auto-fill end date when start date changes
+  const handleStartDateChange = (e) => {
+    const selectedDate = e.target.value;
+    setDate(selectedDate);
+
+    // If end date is not set or is before start date, set it to start date
+    if (!endDate || endDate < selectedDate) {
+      setEndDate(selectedDate);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/55 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl relative transform transition-all duration-300 ease-in-out scale-100 opacity-100">
@@ -112,7 +164,7 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
           <IoCloseSharp size={24} />
         </button>
         <h2 className="text-2xl font-bold text-primary mb-6 border-b-2 border-blue-100 pb-2">
-          Assign Duty to {officer.empid}
+          {getModalTitle()}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
@@ -207,13 +259,13 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
                 htmlFor="date"
                 className="block text-sm font-semibold text-gray-700 mb-1"
               >
-                Date
+                Start Date
               </label>
               <input
                 id="date"
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={handleStartDateChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
               />
@@ -235,21 +287,40 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
               />
             </div>
           </div>
-          <div>
-            <label
-              htmlFor="endTime"
-              className="block text-sm font-semibold text-gray-700 mb-1"
-            >
-              End Time
-            </label>
-            <input
-              id="endTime"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="endDate"
+                className="block text-sm font-semibold text-gray-700 mb-1"
+              >
+                End Date
+              </label>
+              <input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={date} // Prevent selecting end date before start date
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="endTime"
+                className="block text-sm font-semibold text-gray-700 mb-1"
+              >
+                End Time
+              </label>
+              <input
+                id="endTime"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+              />
+            </div>
           </div>
           {error && (
             <p className="text-sm text-red-500 text-center font-medium mt-4">
@@ -273,7 +344,7 @@ export const AssignDutyModal = ({ officer, onClose, onDutyAssigned }) => {
                   : "bg-primary hover:bg-blue-700 cursor-pointer"
               }`}
             >
-              {loading ? "Assigning..." : "Assign Duty"}
+              {getSubmitButtonText()}
             </button>
           </div>
         </form>

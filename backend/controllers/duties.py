@@ -640,7 +640,7 @@ async def get_location_updates(
         )
 
 
-@router.delete('/{duty_id}')
+@router.delete('/{duty_id}', status_code=status.HTTP_200_OK)
 async def delete_duty(
     duty_id: str,
     admin: User = Depends(get_current_admin_user)

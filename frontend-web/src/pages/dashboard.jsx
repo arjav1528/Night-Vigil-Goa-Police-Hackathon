@@ -2,29 +2,23 @@ import { useState, useEffect } from "react";
 import { FaUserCircle } from "react-icons/fa";
 import { IoIosLogOut } from "react-icons/io";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 import { AssignDutyModal } from "../components/AssignDutyModal";
 import { MapComponent, getMarkerColor } from "../components/MapComponent";
 
-export const Dashboard = ({ onLogout }) => {
+export const Dashboard = () => {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState(null);
+  const { logout, getAuthHeaders } = useAuth();
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("No access token found. Please log in.");
-      }
-
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "ngrok-skip-browser-warning": "true",
-      };
+      const headers = getAuthHeaders();
 
       const [officersResponse, dutiesResponse] = await Promise.all([
         fetch(`${import.meta.env.VITE_BACKEND_URL}/duties/users/all`, {
@@ -35,14 +29,18 @@ export const Dashboard = ({ onLogout }) => {
 
       const officersData = await handleResponse(officersResponse, "officers");
       const dutiesData = await handleResponse(dutiesResponse, "duties");
+  
+      // Fix the data structure access - backend returns {users: [], count: number} and {duties: [], count: number}
+      const officers = officersData.users || [];
+      const duties = dutiesData.duties || [];
 
       const dutiesMap = {};
-      dutiesData.forEach((duty) => {
+      duties.forEach((duty) => {
         dutiesMap[duty.officerId] = duty;
       });
 
       const mergedOfficers = await Promise.all(
-        officersData.map(async (officer) => {
+        officers.map(async (officer) => {
           const assignedDuty = dutiesMap[officer.id] || null;
           let verificationData = null;
 
@@ -78,6 +76,11 @@ export const Dashboard = ({ onLogout }) => {
     } catch (err) {
       setError(err.message);
       console.error("Error fetching dashboard data: ", err);
+      
+      // If unauthorized, logout the user
+      if (err.message.includes('401') || err.message.includes('unauthorized')) {
+        logout();
+      }
     } finally {
       setLoading(false);
     }
@@ -121,6 +124,10 @@ export const Dashboard = ({ onLogout }) => {
     fetchDashboardData();
   };
 
+  const handleLogout = () => {
+    logout();
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case "COMPLETED":
@@ -134,6 +141,73 @@ export const Dashboard = ({ onLogout }) => {
     }
   };
 
+  const isOfficerAvailableForAssignment = (officer) => {
+    // Officer is available if they have no duty or their duty is completed
+    return !officer.assignedDuty || officer.assignedDuty.status === "COMPLETED";
+  };
+
+  const getAssignButtonText = (officer) => {
+    if (!officer.assignedDuty) {
+      return "Assign Duty";
+    }
+    
+    switch (officer.assignedDuty.status) {
+      case "COMPLETED":
+        return "Reassign Duty";
+      case "PENDING":
+        return "Already Assigned";
+      case "MISSED":
+        return "Reassign Duty";
+      default:
+        return "Already Assigned";
+    }
+  };
+
+  const formatDutyTime = (startTime, endTime) => {
+    // Parse UTC times from backend and convert to local time for display
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    
+    const startDate = start.toLocaleDateString();
+    const endDate = end.toLocaleDateString();
+    
+    const startTimeFormatted = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(start);
+    
+    const endTimeFormatted = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(end);
+    
+    // If dates are the same, show only time
+    if (startDate === endDate) {
+      return `${startTimeFormatted} - ${endTimeFormatted}`;
+    }
+    
+    // If dates are different, show full date and time
+    const startFullFormatted = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(start);
+    
+    const endFullFormatted = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(end);
+    
+    return `${startFullFormatted} - ${endFullFormatted}`;
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-background text-on-background">
       {/* Sidebar - Officer List */}
@@ -141,7 +215,7 @@ export const Dashboard = ({ onLogout }) => {
         <div className="p-4 flex justify-between items-center bg-primary text-on-primary shadow-lg sticky top-0 z-10">
           <h1 className="text-title-lg font-bold">Officers</h1>
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-1 bg-secondary text-on-secondary rounded-md text-label-lg hover:bg-opacity-80 transition-colors cursor-pointer"
           >
             <IoIosLogOut />
@@ -182,17 +256,7 @@ export const Dashboard = ({ onLogout }) => {
                       <div className="text-sm text-gray-800 mt-1 flex items-center">
                         <span className="font-medium mr-1">Time:</span>
                         <span>
-                          {new Intl.DateTimeFormat("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: "UTC",
-                          }).format(new Date(officer.assignedDuty.startTime))}
-                          {" - "}
-                          {new Intl.DateTimeFormat("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: "UTC",
-                          }).format(new Date(officer.assignedDuty.endTime))}
+                          {formatDutyTime(officer.assignedDuty.startTime, officer.assignedDuty.endTime)}
                         </span>
                       </div>
                       <div
@@ -237,13 +301,13 @@ export const Dashboard = ({ onLogout }) => {
                 <button
                   onClick={() => openAssignModal(officer)}
                   className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                    officer.assignedDuty
-                      ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                      : "text-primary border border-primary hover:bg-primary hover:text-on-primary cursor-pointer"
+                    isOfficerAvailableForAssignment(officer)
+                      ? "text-primary border border-primary hover:bg-primary hover:text-on-primary cursor-pointer"
+                      : "bg-gray-400 text-gray-700 cursor-not-allowed"
                   }`}
-                  disabled={!!officer.assignedDuty}
+                  disabled={!isOfficerAvailableForAssignment(officer)}
                 >
-                  {officer.assignedDuty ? "Assigned" : "Assign Duty"}
+                  {getAssignButtonText(officer)}
                 </button>
               </li>
             ))}
