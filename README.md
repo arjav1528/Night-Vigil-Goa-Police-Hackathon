@@ -50,16 +50,23 @@ This is a standalone service built with **FastAPI** and containerized with **Doc
 
 The backend exposes a series of RESTful API endpoints for the web and mobile applications to interact with.
 
+#### **3.1. Authentication Endpoints**
+
 * `POST /users/register`: Registers a new officer. This endpoint creates the user in the database and then calls the face recognition microservice to enroll their face.
 * `POST /users/login`: Authenticates an officer and returns a JWT token for future requests.
 * `POST /users/admin/login`: Authenticates an admin and returns a JWT token.
+* `POST /users/admin/register`: Registers a new admin user (for initial setup).
 * `GET /users/me`: Retrieves the profile information for the authenticated user (officer or admin).
+
+#### **3.2. Duty Management Endpoints**
+
 * `POST /duties`: (Admin only) Creates a new duty assignment with location, radius, and time.
 * `GET /duties`: (Admin only) Retrieves all duty assignments for all officers.
+* `GET /duties/users/all`: (Admin only) Retrieves all officers for assignment purposes.
 * `GET /duties/my-duties`: (Officer only) Retrieves all duties assigned to the current officer.
 * `POST /duties/{duty_id}/checkin`: The primary endpoint for officers to check in. It triggers both location verification and facial recognition.
 * `POST /duties/location-update`: Receives real-time location updates from the mobile app's background service. If a geofence breach is detected, it logs an alert.
-* `GET /duties/location-update/{id}`: (Admin only) Retrieves the location history for a specific officer.
+* `GET /duties/location-update/{officer_id}`: (Admin only) Retrieves the location history for a specific officer.
 
 ***
 
