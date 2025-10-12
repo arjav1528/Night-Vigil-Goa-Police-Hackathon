@@ -10,6 +10,14 @@ import os
 from enum import Enum
 from models.schemas import UserOut
 from security import get_current_user
+from typing import List
+import requests
+import logging
+from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 load_dotenv()
 
@@ -60,6 +68,43 @@ def validate_request_data(req_data: dict, required_fields: list) -> dict:
             cleaned_data[key] = value
     
     return cleaned_data
+
+async def enroll_user_face(user_id: str, profile_images: List[str]) -> bool:
+    """Enroll user's face in the face recognition service"""
+    try:
+        if not FACE_RECOG_SERVICE_URL:
+            logger.warning("Face recognition service URL not configured")
+            return True  # Don't fail registration if service unavailable
+        
+        if not profile_images:
+            logger.warning(f"No profile images provided for user {user_id}")
+            return True  # Don't fail registration if no images
+        
+        enroll_data = {
+            "user_id": user_id,
+            "image_urls": profile_images
+        }
+        
+        response = requests.post(
+            f"{FACE_RECOG_SERVICE_URL}/enroll",
+            json=enroll_data,
+            timeout=30,
+            headers={"ngrok-skip-browser-warning": "true"}
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Successfully enrolled face for user {user_id}")
+            return True
+        else:
+            logger.error(f"Face enrollment failed for user {user_id}: {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Face enrollment request failed for user {user_id}: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error during face enrollment for user {user_id}: {str(e)}")
+        return False
 
 @router.post("/register")
 async def register(request: Request):
@@ -115,7 +160,7 @@ async def register(request: Request):
         user.set_password(password)
         print("User object created:", user.empid, user.role,user.passwordHash)
         
-        # Create user in database with transaction-like behavior
+        # Create user in database
         try:
             result = await db.user.create(
                 data={
@@ -129,9 +174,21 @@ async def register(request: Request):
                 }
             )
             
+            # Enroll face if profile images are provided and user is an officer
+            face_enrollment_success = True
+            if profileImages and role == "OFFICER":
+                face_enrollment_success = await enroll_user_face(result.id, profileImages)
+                
+                if not face_enrollment_success:
+                    logger.warning(f"Face enrollment failed for user {empid}, but registration completed")
+            
             return JSONResponse(
                 status_code=status.HTTP_201_CREATED,
-                content={"detail": "User registered successfully", "user_id": result.id}
+                content={
+                    "detail": "User registered successfully", 
+                    "user_id": result.id,
+                    "face_enrolled": face_enrollment_success
+                }
             )
             
         except Exception as db_error:

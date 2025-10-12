@@ -8,6 +8,11 @@ from controllers import auth
 from controllers import duties
 import logging
 import subprocess
+import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # subprocess.run(["prisma", "generate"], check=True)
 
@@ -50,6 +55,25 @@ async def ensure_db_connection():
 @app.on_event("startup")
 async def startup():
     await ensure_db_connection()
+    
+    # Check face recognition service connectivity
+    face_recog_url = os.getenv("FACE_RECOG_SERVICE_URL")
+    if face_recog_url:
+        try:
+            response = requests.get(
+                f"{face_recog_url}/",
+                timeout=5,
+                headers={"ngrok-skip-browser-warning": "true"}
+            )
+            if response.status_code == 200:
+                logger.info("Face recognition service is available")
+            else:
+                logger.warning("Face recognition service responded with non-200 status")
+        except requests.exceptions.RequestException:
+            logger.warning("Face recognition service is not available")
+    else:
+        logger.warning("Face recognition service URL not configured")
+    
     logger.info("Application started successfully")
 
 @app.on_event("shutdown")
@@ -106,9 +130,26 @@ async def index():
 async def health_check():
     try:
         await ensure_db_connection()
+        
+        # Check face recognition service
+        face_recog_status = "not_configured"
+        face_recog_url = os.getenv("FACE_RECOG_SERVICE_URL")
+        
+        if face_recog_url:
+            try:
+                response = requests.get(
+                    f"{face_recog_url}/",
+                    timeout=3,
+                    headers={"ngrok-skip-browser-warning": "true"}
+                )
+                face_recog_status = "connected" if response.status_code == 200 else "error"
+            except requests.exceptions.RequestException:
+                face_recog_status = "disconnected"
+        
         return {
             "status": "healthy",
             "database": "connected",
+            "face_recognition": face_recog_status,
             "timestamp": time()
         }
     except Exception as e:
@@ -117,6 +158,7 @@ async def health_check():
             content={
                 "status": "unhealthy",
                 "database": "disconnected",
+                "face_recognition": "unknown",
                 "error": str(e),
                 "timestamp": time()
             }

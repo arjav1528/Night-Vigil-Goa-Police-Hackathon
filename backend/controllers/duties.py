@@ -12,6 +12,10 @@ from enum import Enum
 import requests
 from fastapi.concurrency import run_in_threadpool
 from math import radians, sin, cos, sqrt, atan2
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -53,6 +57,47 @@ def calculate_distance(lat1, lon1, lat2, lon2):
         return R * c
     except Exception as e:
         raise ValueError(f"Distance calculation failed: {str(e)}")
+
+async def verify_user_face(user_id: str, selfie_url: str) -> tuple[bool, float]:
+    """Verify user's face against enrolled embeddings"""
+    try:
+        if not FACE_RECOG_SERVICE_URL:
+            logger.warning("Face recognition service URL not configured")
+            return True, 1.0  # Don't fail check-in if service unavailable
+        
+        if not selfie_url:
+            logger.warning(f"No selfie URL provided for user {user_id}")
+            return False, 0.0
+        
+        verify_data = {
+            "user_id": user_id,
+            "selfie_url": selfie_url
+        }
+        
+        response = requests.post(
+            f"{FACE_RECOG_SERVICE_URL}/verify",
+            json=verify_data,
+            timeout=30,
+            headers={"ngrok-skip-browser-warning": "true"}
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            verified = result.get("verified", False)
+            confidence = result.get("confidence", 0.0)
+            
+            logger.info(f"Face verification for user {user_id}: verified={verified}, confidence={confidence}")
+            return verified, confidence
+        else:
+            logger.error(f"Face verification failed for user {user_id}: {response.text}")
+            return False, 0.0
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Face verification request failed for user {user_id}: {str(e)}")
+        return False, 0.0
+    except Exception as e:
+        logger.error(f"Unexpected error during face verification for user {user_id}: {str(e)}")
+        return False, 0.0
 
 @router.post("/", status_code=201)
 async def create_duty(duty_data: DutyCreateSchema, admin: User = Depends(get_current_admin_user)):
@@ -268,10 +313,9 @@ async def duty_check_in(
                 detail="Duty not assigned to you"
             )
         
-        # Check if duty is in valid time range - fix timezone issue
+        # Check if duty is in valid time range
         current_time = datetime.now(timezone.utc)
         
-        # Ensure duty times are timezone-aware
         duty_start = duty.startTime
         duty_end = duty.endTime
         
@@ -303,7 +347,7 @@ async def duty_check_in(
                 detail="Already checked in for this duty"
             )
         
-        # Calculate distance with error handling
+        # Calculate distance and verify location
         try:
             distance = calculate_distance(
                 check_in_data.latitude, 
@@ -324,7 +368,18 @@ async def duty_check_in(
                 detail=f"You are {distance:.2f}m away from duty location. Required: within {duty.radius}m"
             )
         
-        face_verified = True  # Default to true for now
+        # Verify face if selfie is provided
+        face_verified = True
+        face_confidence = 1.0
+        
+        if check_in_data.selfieUrl:
+            face_verified, face_confidence = await verify_user_face(current_user.id, check_in_data.selfieUrl)
+            
+            if not face_verified:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Face verification failed. Confidence: {face_confidence:.2f}"
+                )
         
         # Create duty log
         duty_log_data = {
@@ -335,7 +390,7 @@ async def duty_check_in(
             "selfiePath": check_in_data.selfieUrl,
             "locationVerified": location_verified,
             "faceVerified": face_verified,
-            "remarks": check_in_data.remarks or "Check-in completed",
+            "remarks": check_in_data.remarks or f"Check-in completed. Face confidence: {face_confidence:.2f}",
             "createdAt": current_time,
             "updatedAt": current_time
         }
@@ -355,6 +410,7 @@ async def duty_check_in(
                 "status": "success", 
                 "location_verified": location_verified, 
                 "face_verified": face_verified,
+                "face_confidence": face_confidence,
                 "distance": round(distance, 2),
                 "duty_status": DutyStatus.COMPLETED.value if (location_verified and face_verified) else DutyStatus.PENDING.value
             }
