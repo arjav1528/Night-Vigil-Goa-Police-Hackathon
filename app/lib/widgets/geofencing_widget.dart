@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -544,37 +546,127 @@ class GeofencingScreen extends StatelessWidget {
           },
           icon: const Icon(Icons.arrow_back)),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            GeofencingWidget(duties: duties),
-            const SizedBox(height: 16),
-            Card(
-              margin: const EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'How Geofencing Works',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '• Automatically starts when you check in for duty\n'
-                      '• Continuously monitors your location during duty hours\n'
-                      '• Works even when the app is closed\n'
-                      '• Sends notifications for geofence events\n'
-                      '• Automatically stops when your duty ends\n'
-                      '• COMPULSORY - Cannot be manually disabled during duty',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
+      body: BlocListener<GeofencingBloc, GeofencingState>(
+        listener: (context, state) {
+          // Show snackbar for refresh completion
+          if (state is GeofencingActive) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          } else if (state is GeofencingError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Refresh failed: ${state.message}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
               ),
+            );
+          }
+        },
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final completer = Completer<void>();
+            
+            // Listen for state changes to complete the refresh
+            final subscription = context.read<GeofencingBloc>().stream.listen((state) {
+              if (state is! GeofencingLoading && !completer.isCompleted) {
+                completer.complete();
+              }
+            });
+
+            try {
+              // Trigger refresh events
+              context.read<GeofencingBloc>().add(InitializeGeofencing());
+
+              // Wait a brief moment to ensure the event is processed
+              await Future.delayed(const Duration(milliseconds: 100));
+              
+              // Check current location
+              context.read<GeofencingBloc>().add(CheckCurrentLocationAgainstDuties());
+              
+              // Wait for completion or timeout
+              await completer.future.timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  if (!completer.isCompleted) {
+                    completer.complete();
+                  }
+                },
+              );
+            } catch (e) {
+              // Handle any errors during refresh
+              if (!completer.isCompleted) {
+                completer.complete();
+              }
+            } finally {
+              subscription.cancel();
+            }
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                GeofencingWidget(duties: duties),
+                const SizedBox(height: 16),
+                Card(
+                  margin: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Text(
+                              'How Geofencing Works',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          '• Automatically starts when you check in for duty\n'
+                          '• Continuously monitors your location during duty hours\n'
+                          '• Works even when the app is closed\n'
+                          '• Sends notifications for geofence events\n'
+                          '• Automatically stops when your duty ends\n'
+                          '• COMPULSORY - Cannot be manually disabled during duty',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.refresh, color: Colors.blue.shade700, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Pull down to refresh location and geofencing status',
+                                  style: TextStyle(
+                                    color: Colors.blue.shade700,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Add some bottom padding for better scrolling experience
+                const SizedBox(height: 32),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

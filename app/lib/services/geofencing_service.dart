@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +18,6 @@ class GeofencingService {
   static const String _lastLocationKey = 'last_location';
   
   late FlutterLocalNotificationsPlugin _notificationsPlugin;
-  late DutyRepository _dutyRepository;
   
   static final GeofencingService _instance = GeofencingService._internal();
   factory GeofencingService() => _instance;
@@ -24,9 +25,16 @@ class GeofencingService {
 
   /// Initialize the geofencing service
   Future<void> initialize() async {
-    await _initializeNotifications();
-    await _initializeBackgroundService();
-    _dutyRepository = DutyRepository(); // Initialize duty repository
+    try {
+      await _initializeNotifications();
+      await _initializeBackgroundService();
+      
+      // Clean up any expired duties during initialization
+      await _cleanupExpiredDuties();
+    } catch (e) {
+      debugPrint('Error initializing geofencing service: $e');
+      // Don't rethrow to prevent app crashes
+    }
   }
 
   /// Initialize local notifications
@@ -253,13 +261,46 @@ class GeofencingService {
 
   /// Get duties from storage
   Future<List<DutyAssignment>> getDutiesFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? dutiesJson = prefs.getString(_dutiesKey);
-    
-    if (dutiesJson == null) return [];
-    
-    final List<dynamic> dutiesList = json.decode(dutiesJson);
-    return dutiesList.map((e) => DutyAssignment.fromJson(e)).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? dutiesJson = prefs.getString(_dutiesKey);
+      
+      if (dutiesJson == null) return [];
+      
+      final List<dynamic> dutiesList = json.decode(dutiesJson);
+      final duties = dutiesList.map((e) => DutyAssignment.fromJson(e)).toList();
+      
+      // Filter out expired duties
+      final now = DateTime.now();
+      final activeDuties = duties.where((duty) => now.isBefore(duty.endTime)).toList();
+      
+      // If some duties were filtered out, update storage
+      if (activeDuties.length != duties.length) {
+        await _saveDutiesToStorage(activeDuties);
+      }
+      
+      return activeDuties;
+    } catch (e) {
+      debugPrint('Error getting duties from storage: $e');
+      // Clear corrupted data and return empty list
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_dutiesKey);
+      } catch (clearError) {
+        debugPrint('Error clearing corrupted duties data: $clearError');
+      }
+      return [];
+    }
+  }
+
+  /// Clean up expired duties from storage
+  Future<void> _cleanupExpiredDuties() async {
+    try {
+      await getDutiesFromStorage();
+      // getDutiesFromStorage already filters expired duties and updates storage
+    } catch (e) {
+      debugPrint('Error cleaning up expired duties: $e');
+    }
   }
 
   /// Check if user is within duty area
@@ -342,9 +383,16 @@ class GeofencingService {
 void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
   
+  // Load environment variables for background service
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('Failed to load .env in background service: $e');
+  }
+  
   SharedPreferences prefs = await SharedPreferences.getInstance();
   
-  Timer.periodic(const Duration(seconds: 30), (timer) async {
+  Timer.periodic(const Duration(seconds: 5), (timer) async {
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
         service.setForegroundNotificationInfo(
@@ -388,12 +436,20 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 /// Perform geofence checking
 Future<void> _performGeofenceCheck(SharedPreferences prefs, ServiceInstance service) async {
   try {
-    // Get stored duties
+    // Get stored duties with error handling
     final dutiesString = prefs.getString('geofence_duties');
     if (dutiesString == null) return;
     
-    final List<dynamic> dutiesList = json.decode(dutiesString);
-    final duties = dutiesList.map((e) => DutyAssignment.fromJson(e)).toList();
+    List<DutyAssignment> duties;
+    try {
+      final List<dynamic> dutiesList = json.decode(dutiesString);
+      duties = dutiesList.map((e) => DutyAssignment.fromJson(e)).toList();
+    } catch (parseError) {
+      debugPrint('Error parsing stored duties: $parseError');
+      // Clear corrupted data
+      await prefs.remove('geofence_duties');
+      return;
+    }
     
     // Check if any duties have ended and auto-stop if needed
     final now = DateTime.now();
@@ -404,90 +460,140 @@ Future<void> _performGeofenceCheck(SharedPreferences prefs, ServiceInstance serv
       debugPrint('All duties ended, stopping geofencing service');
       await prefs.remove('geofence_duties');
       
-      // Show notification about automatic stop
-      await _showBackgroundNotification(
-        'Duty Completed',
-        'All duties have ended. Geofencing has been stopped automatically.',
-        998,
-      );
+      // Show notification about automatic stop with error handling
+      try {
+        await _showBackgroundNotification(
+          'Duty Completed',
+          'All duties have ended. Geofencing has been stopped automatically.',
+          998,
+        );
+      } catch (notificationError) {
+        debugPrint('Error showing completion notification: $notificationError');
+      }
       
       service.stopSelf();
       return;
     } else if (activeDuties.length != duties.length) {
       // Some duties ended, update the stored duties
-      await prefs.setString('geofence_duties', json.encode(activeDuties.map((duty) => {
-        'id': duty.id,
-        'location': duty.location,
-        'latitude': duty.latitude,
-        'longitude': duty.longitude,
-        'radius': duty.radius,
-        'startTime': duty.startTime.toIso8601String(),
-        'endTime': duty.endTime.toIso8601String(),
-        'status': duty.status,
-      }).toList()));
+      try {
+        await prefs.setString('geofence_duties', json.encode(activeDuties.map((duty) => {
+          'id': duty.id,
+          'location': duty.location,
+          'latitude': duty.latitude,
+          'longitude': duty.longitude,
+          'radius': duty.radius,
+          'startTime': duty.startTime.toIso8601String(),
+          'endTime': duty.endTime.toIso8601String(),
+          'status': duty.status,
+        }).toList()));
+      } catch (updateError) {
+        debugPrint('Error updating stored duties: $updateError');
+      }
     }
     
-    // Get current location
+    // Get current location with enhanced error handling
     final Position? position = await _getCurrentLocationSafely();
-    if (position == null) return;
+    if (position == null) {
+      debugPrint('Could not get current location, skipping geofence check');
+      return;
+    }
     
-    // Save current location
-    await prefs.setString('last_location', json.encode({
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-      'timestamp': position.timestamp.toIso8601String(),
-      'accuracy': position.accuracy,
-      'altitude': position.altitude,
-      'altitudeAccuracy': position.altitudeAccuracy,
-      'heading': position.heading,
-      'headingAccuracy': position.headingAccuracy,
-      'speed': position.speed,
-      'speedAccuracy': position.speedAccuracy,
-      'isMocked': position.isMocked,
-    }));
+    // Save current location with error handling
+    try {
+      await prefs.setString('last_location', json.encode({
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'timestamp': position.timestamp.toIso8601String(),
+        'accuracy': position.accuracy,
+        'altitude': position.altitude,
+        'altitudeAccuracy': position.altitudeAccuracy,
+        'heading': position.heading,
+        'headingAccuracy': position.headingAccuracy,
+        'speed': position.speed,
+        'speedAccuracy': position.speedAccuracy,
+        'isMocked': position.isMocked,
+      }));
+    } catch (locationSaveError) {
+      debugPrint('Error saving current location: $locationSaveError');
+      // Continue without saving location
+    }
     
     // Check each active duty area
     for (final duty in activeDuties) {
-      final distance = Geolocator.distanceBetween(
-        position.latitude,
-        position.longitude,
-        duty.latitude,
-        duty.longitude,
-      );
-      
-      final isInside = distance <= duty.radius;
-      final previousStatusKey = 'duty_${duty.id}_inside';
-      final wasInside = prefs.getBool(previousStatusKey) ?? false;
-      
-      // Always send location tracking data to backend
       try {
-        await _sendLocationTrackingToBackend(duty.id, position, isInside);
-      } catch (e) {
-        debugPrint('Failed to send location tracking to backend: $e');
-      }
-      
-      // Check if status changed
-      if (isInside != wasInside) {
-        await prefs.setBool(previousStatusKey, isInside);
-        
-        // Show notification
-        await _showBackgroundNotification(
-          isInside ? 'Entered Duty Area' : 'Left Duty Area',
-          '${duty.location} - Distance: ${distance.round()}m',
-          duty.id.hashCode,
+        final distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          duty.latitude,
+          duty.longitude,
         );
         
-        service.invoke('geofence_status_changed', {
-          'dutyId': duty.id,
-          'location': duty.location,
-          'isInside': isInside,
-          'distance': distance,
-          'timestamp': DateTime.now().toIso8601String(),
-        });
+        final isInside = distance <= duty.radius;
+        final previousStatusKey = 'duty_${duty.id}_inside';
+        final wasInside = prefs.getBool(previousStatusKey) ?? false;
+        
+        // Always send location tracking data to backend with error handling
+        try {
+          await _sendLocationTrackingToBackend(duty.id, position, isInside);
+        } catch (e) {
+          debugPrint('Failed to send location tracking to backend: $e');
+          // Continue with other duties
+        }
+        
+        // Check if status changed
+        if (isInside != wasInside) {
+          try {
+            await prefs.setBool(previousStatusKey, isInside);
+          } catch (statusSaveError) {
+            debugPrint('Error saving duty status: $statusSaveError');
+          }
+          
+          // Show immediate notification with more context
+          try {
+            if (isInside) {
+              await _showBackgroundNotification(
+                '✅ Entered Duty Area',
+                '${duty.location} - You are now in your assigned duty area',
+                duty.id.hashCode,
+              );
+            } else {
+              await _showBackgroundNotification(
+                '⚠️ Left Duty Area',
+                '${duty.location} - Please return to duty area (${distance.round()}m away)',
+                duty.id.hashCode,
+              );
+            }
+          } catch (notificationError) {
+            debugPrint('Error showing geofence notification: $notificationError');
+          }
+          
+          try {
+            service.invoke('geofence_status_changed', {
+              'dutyId': duty.id,
+              'location': duty.location,
+              'isInside': isInside,
+              'distance': distance,
+              'timestamp': DateTime.now().toIso8601String(),
+            });
+          } catch (invokeError) {
+            debugPrint('Error invoking geofence status change: $invokeError');
+          }
+          
+          debugPrint('Geofence status changed: ${duty.location} - Inside: $isInside - Distance: ${distance.round()}m');
+        }
+      } catch (dutyCheckError) {
+        debugPrint('Error checking duty ${duty.id}: $dutyCheckError');
+        // Continue with next duty
       }
     }
   } catch (e) {
     debugPrint('Error in geofence check: $e');
+    // Try to gracefully recover by clearing potentially corrupted data
+    try {
+      await prefs.remove('geofence_duties');
+    } catch (clearError) {
+      debugPrint('Error clearing duties during error recovery: $clearError');
+    }
   }
 }
 
@@ -498,17 +604,40 @@ Future<void> _sendLocationTrackingToBackend(
   bool isInside,
 ) async {
   try {
-    // Import DutyRepository
-    final dutyRepository = DutyRepository();
+    // Ensure dotenv is loaded before creating DutyRepository
+    try {
+      // Try to access the environment variable to check if dotenv is loaded
+      final backendUrl = dotenv.env['BACKEND_URL'];
+      if (backendUrl == null || backendUrl.isEmpty) {
+        await dotenv.load(fileName: ".env");
+      }
+    } catch (e) {
+      // If dotenv is not initialized, try to load it
+      try {
+        await dotenv.load(fileName: ".env");
+      } catch (loadError) {
+        debugPrint('Failed to load dotenv: $loadError');
+        // Continue with fallback URL or skip backend tracking
+        return;
+      }
+    }
     
-    await dutyRepository.trackLocation(
-      dutyId: dutyId,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      isInside: isInside,
-    );
-    
-    debugPrint('Location tracking sent to backend: lat=${position.latitude}, lng=${position.longitude}, inside=$isInside');
+    // Import DutyRepository with error handling
+    try {
+      final dutyRepository = DutyRepository();
+      
+      await dutyRepository.trackLocation(
+        dutyId: dutyId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        isInside: isInside,
+      );
+      
+      debugPrint('Location tracking sent to backend: lat=${position.latitude}, lng=${position.longitude}, inside=$isInside');
+    } catch (repoError) {
+      debugPrint('Failed to create or use DutyRepository: $repoError');
+      // Don't throw - we want background service to continue
+    }
   } catch (e) {
     debugPrint('Failed to send location tracking to backend: $e');
     // Don't throw - we want background service to continue
@@ -591,24 +720,51 @@ Future<Position?> _getCurrentLocationSafely() async {
 Future<void> _showBackgroundNotification(String title, String body, int id) async {
   final FlutterLocalNotificationsPlugin notificationsPlugin = FlutterLocalNotificationsPlugin();
   
-  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'geofence_channel',
-    'Geofence Notifications',
-    channelDescription: 'Notifications for geofence events',
-    importance: Importance.high,
-    priority: Priority.high,
-    showWhen: true,
-    playSound: true,
-    enableVibration: true,
-  );
+  // Different notification settings based on the type of notification
+  AndroidNotificationDetails androidDetails;
+  
+  if (title.contains('Left') || title.contains('⚠️')) {
+    // Warning notification for leaving duty area
+    androidDetails = AndroidNotificationDetails(
+      'geofence_channel',
+      'Geofence Notifications',
+      channelDescription: 'Notifications for geofence events',
+      importance: Importance.max,
+      priority: Priority.max,
+      showWhen: true,
+      playSound: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 500, 250, 500, 250, 500]), // Custom vibration pattern
+      color: const Color(0xFFFF6B6B), // Red color for warning
+      ongoing: false,
+      autoCancel: true,
+    );
+  } else {
+    // Success notification for entering duty area
+    androidDetails = AndroidNotificationDetails(
+      'geofence_channel',
+      'Geofence Notifications',
+      channelDescription: 'Notifications for geofence events',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+      playSound: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 200, 100, 200]), // Lighter vibration pattern
+      color: const Color(0xFF4ECDC4), // Green color for success
+      ongoing: false,
+      autoCancel: true,
+    );
+  }
   
   const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
     presentAlert: true,
     presentBadge: true,
     presentSound: true,
+    interruptionLevel: InterruptionLevel.timeSensitive,
   );
   
-  const NotificationDetails details = NotificationDetails(
+  final NotificationDetails details = NotificationDetails(
     android: androidDetails,
     iOS: iosDetails,
   );

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:equatable/equatable.dart';
 
@@ -59,6 +60,25 @@ class CheckCurrentLocationAgainstDuties extends GeofencingEvent {}
 class RequestGeofencingPermissions extends GeofencingEvent {}
 
 class CheckDutyEndTimes extends GeofencingEvent {}
+
+class GeofenceStatusChanged extends GeofencingEvent {
+  final String dutyId;
+  final String location;
+  final bool isInside;
+  final double distance;
+  final DateTime timestamp;
+
+  const GeofenceStatusChanged({
+    required this.dutyId,
+    required this.location,
+    required this.isInside,
+    required this.distance,
+    required this.timestamp,
+  });
+
+  @override
+  List<Object?> get props => [dutyId, location, isInside, distance, timestamp];
+}
 
 // States
 abstract class GeofencingState extends Equatable {
@@ -129,6 +149,7 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
   StreamSubscription<Position>? _positionStreamSubscription;
   Timer? _dutyCheckTimer; // Timer to check duty end times
   Timer? _locationTrackingTimer; // Timer for periodic location tracking
+  StreamSubscription? _geofenceStatusSubscription; // Listen to background service events
 
   GeofencingBloc({GeofencingService? geofencingService})
       : _geofencingService = geofencingService ?? GeofencingService(),
@@ -142,6 +163,7 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
     on<RemoveGeofenceForDuty>(_onRemoveGeofenceForDuty);
     on<CheckCurrentLocationAgainstDuties>(_onCheckCurrentLocationAgainstDuties);
     on<CheckDutyEndTimes>(_onCheckDutyEndTimes);
+    on<GeofenceStatusChanged>(_onGeofenceStatusChanged);
   }
 
   @override
@@ -149,6 +171,7 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
     _positionStreamSubscription?.cancel();
     _dutyCheckTimer?.cancel(); // Cancel duty check timer
     _locationTrackingTimer?.cancel(); // Cancel location tracking timer
+    _geofenceStatusSubscription?.cancel(); // Cancel geofence status subscription
     return super.close();
   }
 
@@ -164,12 +187,31 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
       final isRunning = await _geofencingService.isRunning;
       if (isRunning) {
         final duties = await _geofencingService.getDutiesFromStorage();
-        emit(GeofencingActive(activeDuties: duties));
+        
+        // Check if any duties are still active
+        final now = DateTime.now();
+        final activeDuties = duties.where((duty) => now.isBefore(duty.endTime)).toList();
+        
+        if (activeDuties.isNotEmpty) {
+          emit(GeofencingActive(activeDuties: activeDuties));
+        } else {
+          // All duties have ended, stop geofencing
+          debugPrint('All stored duties have ended, stopping geofencing during initialization');
+          await _geofencingService.forceStopGeofencing();
+          emit(GeofencingInactive());
+        }
       } else {
         emit(GeofencingInactive());
       }
     } catch (e) {
-      emit(GeofencingError('Failed to initialize geofencing: $e'));
+      debugPrint('Error initializing geofencing: $e');
+      // Try to gracefully handle the error
+      try {
+        await _geofencingService.forceStopGeofencing();
+      } catch (stopError) {
+        debugPrint('Error force stopping geofencing during error recovery: $stopError');
+      }
+      emit(GeofencingInactive());
     }
   }
 
@@ -211,6 +253,9 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
 
       await _geofencingService.startGeofencing(event.duties);
       
+      // Start listening to geofence status changes from background service
+      _startGeofenceStatusListener();
+      
       // Start listening to location updates
       _startLocationTracking();
       
@@ -247,6 +292,8 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
       await _geofencingService.stopGeofencing();
       _positionStreamSubscription?.cancel();
       _dutyCheckTimer?.cancel(); // Cancel duty monitoring timer
+      _locationTrackingTimer?.cancel(); // Cancel location tracking timer
+      _geofenceStatusSubscription?.cancel(); // Cancel geofence status listener
       
       emit(GeofencingInactive());
     } catch (e) {
@@ -380,6 +427,18 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
         add(CheckCurrentLocationAgainstDuties()); // Still try to check manually
       },
     );
+    
+    // Start periodic location tracking every 5 seconds
+    _startPeriodicLocationTracking();
+  }
+
+  void _startPeriodicLocationTracking() {
+    _locationTrackingTimer?.cancel();
+    
+    // Update location every 5 seconds
+    _locationTrackingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      add(CheckCurrentLocationAgainstDuties());
+    });
   }
 
   /// Start monitoring duty end times to automatically stop geofencing
@@ -414,6 +473,7 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
           await _geofencingService.stopGeofencing();
           _positionStreamSubscription?.cancel();
           _dutyCheckTimer?.cancel();
+          _locationTrackingTimer?.cancel(); // Cancel location tracking timer
           
           emit(GeofencingInactive());
           
@@ -450,6 +510,83 @@ class GeofencingBloc extends Bloc<GeofencingEvent, GeofencingState> {
       }
     } catch (e) {
       debugPrint('Error checking duty end times: $e');
+    }
+  }
+
+  /// Start listening to geofence status changes from background service
+  void _startGeofenceStatusListener() {
+    _geofenceStatusSubscription?.cancel();
+    
+    final service = FlutterBackgroundService();
+    _geofenceStatusSubscription = service.on('geofence_status_changed').listen((event) {
+      if (event != null) {
+        try {
+          final dutyId = event['dutyId'] as String;
+          final location = event['location'] as String;
+          final isInside = event['isInside'] as bool;
+          final distance = (event['distance'] as num).toDouble();
+          final timestamp = DateTime.parse(event['timestamp'] as String);
+          
+          add(GeofenceStatusChanged(
+            dutyId: dutyId,
+            location: location,
+            isInside: isInside,
+            distance: distance,
+            timestamp: timestamp,
+          ));
+        } catch (e) {
+          debugPrint('Error parsing geofence status change: $e');
+        }
+      }
+    });
+  }
+
+  /// Handle geofence status changes from background service
+  Future<void> _onGeofenceStatusChanged(
+    GeofenceStatusChanged event,
+    Emitter<GeofencingState> emit,
+  ) async {
+    try {
+      if (state is GeofencingActive) {
+        final currentState = state as GeofencingActive;
+        
+        // Update the duties user is in
+        final updatedDutiesUserIsIn = List<String>.from(currentState.dutiesUserIsIn);
+        
+        if (event.isInside && !updatedDutiesUserIsIn.contains(event.dutyId)) {
+          updatedDutiesUserIsIn.add(event.dutyId);
+          
+          // Show notification for entering duty area
+          await _geofencingService.showNotification(
+            'Entered Duty Area',
+            '${event.location} - You are now in your assigned duty area',
+            notificationId: 200 + event.dutyId.hashCode,
+          );
+          
+        } else if (!event.isInside && updatedDutiesUserIsIn.contains(event.dutyId)) {
+          updatedDutiesUserIsIn.remove(event.dutyId);
+          
+          // Show notification for leaving duty area
+          await _geofencingService.showNotification(
+            'Left Duty Area',
+            '${event.location} - Please return to your duty area (${event.distance.round()}m away)',
+            notificationId: 300 + event.dutyId.hashCode,
+          );
+        }
+        
+        // Update distances
+        final updatedDistances = Map<String, double>.from(currentState.dutyDistances);
+        updatedDistances[event.dutyId] = event.distance;
+        
+        emit(currentState.copyWith(
+          dutiesUserIsIn: updatedDutiesUserIsIn,
+          dutyDistances: updatedDistances,
+        ));
+        
+        debugPrint('Geofence status changed: ${event.location} - Inside: ${event.isInside} - Distance: ${event.distance.round()}m');
+      }
+    } catch (e) {
+      debugPrint('Error handling geofence status change: $e');
     }
   }
 }

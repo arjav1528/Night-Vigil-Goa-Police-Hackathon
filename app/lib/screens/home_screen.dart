@@ -3,7 +3,6 @@ import 'package:app/bloc/auth_bloc.dart';
 import 'package:app/bloc/duty_bloc.dart';
 import 'package:app/bloc/geofencing_bloc.dart';
 import 'package:app/utils/custom_snackbar.dart';
-import 'package:app/widgets/geofencing_widget.dart';
 import 'package:app/widgets/loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

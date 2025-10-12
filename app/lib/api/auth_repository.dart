@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -29,7 +30,13 @@ class AuthRepository {
       );
       if (response.statusCode == 200 && response.data['access_token'] != null) {
         final token = response.data['access_token'];
-        await _secureStorage.write(key: _tokenKey, value: token);
+        try {
+          await _secureStorage.write(key: _tokenKey, value: token);
+        } catch (storageError) {
+          // If secure storage fails, still return the token
+          // but log the error
+          debugPrint('Error storing token in secure storage: $storageError');
+        }
         return token;
       } else {
         throw Exception('Login failed: Invalid response.');
@@ -62,10 +69,20 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _secureStorage.delete(key: _tokenKey);
+    try {
+      await _secureStorage.delete(key: _tokenKey);
+    } catch (e) {
+      debugPrint('Error deleting token from secure storage during logout: $e');
+      // Continue with logout even if secure storage fails
+    }
   }
 
   Future<String?> getToken() async {
-    return await _secureStorage.read(key: _tokenKey);
+    try {
+      return await _secureStorage.read(key: _tokenKey);
+    } catch (e) {
+      debugPrint('Error reading token from secure storage: $e');
+      return null;
+    }
   }
 }

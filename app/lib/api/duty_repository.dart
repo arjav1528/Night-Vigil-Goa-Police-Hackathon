@@ -25,9 +25,14 @@ class DutyRepository {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _secureStorage.read(key: _tokenKey);
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+          try {
+            final token = await _secureStorage.read(key: _tokenKey);
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          } catch (e) {
+            debugPrint('Error reading token from secure storage: $e');
+            // Continue without token - let the request proceed
           }
           return handler.next(options);
         },
